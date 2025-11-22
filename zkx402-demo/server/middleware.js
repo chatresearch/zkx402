@@ -99,7 +99,121 @@ export function paymentMiddleware(
       extra: extraConfig,
     } = config;
 
-    const atomicAmountForAsset = processPriceToAtomicAmount(price, network);
+    // Read user proofs from header for verification and dynamic pricing
+    let userProofs = [];
+    const userProofsHeader = req.headers['x-user-proofs'];
+    if (userProofsHeader) {
+      try {
+        userProofs = JSON.parse(userProofsHeader);
+        console.log('Received user proofs:', userProofs);
+      } catch (error) {
+        console.error('Failed to parse X-User-Proofs header:', error);
+      }
+    }
+
+    // Custom function to verify user proofs against requested proofs
+    /**
+     * Verifies if user has all required proofs for a discount option
+     * @param {string[]} userProofs - Array of proofs the user claims to have
+     * @param {string[]} requestedProofs - Array of proofs required for the discount
+     * @returns {Object} Verification result with isValid flag and details
+     */
+    function verifyProofs(userProofs, requestedProofs) {
+      // Normalize proofs (trim whitespace, handle case sensitivity)
+      const normalizedUserProofs = userProofs.map(p => p.trim().toLowerCase());
+      const normalizedRequestedProofs = requestedProofs.map(p => p.trim().toLowerCase());
+      
+      // Check if user has all required proofs
+      const missingProofs = normalizedRequestedProofs.filter(
+        requiredProof => !normalizedUserProofs.includes(requiredProof)
+      );
+      
+      const hasAllProofs = missingProofs.length === 0;
+      
+      // Additional verification logic can be added here:
+      // - Check proof expiration dates
+      // - Verify proof signatures/cryptographic validity
+      // - Check proof issuer authenticity
+      // - Validate proof format/structure
+      
+      return {
+        isValid: hasAllProofs,
+        hasAllProofs: hasAllProofs,
+        missingProofs: missingProofs,
+        userProofs: normalizedUserProofs,
+        requestedProofs: normalizedRequestedProofs,
+        verifiedCount: normalizedRequestedProofs.length - missingProofs.length,
+        totalRequired: normalizedRequestedProofs.length,
+      };
+    }
+
+    // Verify proofs against variableAmountRequired and adjust price if qualified
+    let finalPrice = price;
+    let verificationMetadata = null;
+    
+    if (userProofs.length > 0 && extraConfig?.variableAmountRequired) {
+      const variableAmountRequired = extraConfig.variableAmountRequired;
+      
+      // Check each discount option
+      for (const discountOption of variableAmountRequired) {
+        const requestedProofs = discountOption.requestedProofs?.split(",").map((p) => p.trim()) || [];
+        const discountedAmount = discountOption.amountRequired;
+        
+        // Use custom verification function to verify proofs
+        const verificationResult = verifyProofs(userProofs, requestedProofs);
+        
+        console.log('Proof verification result:', {
+          requestedProofs: discountOption.requestedProofs,
+          verificationResult: verificationResult,
+        });
+        
+        // Check if user has all required proofs for this discount
+        if (verificationResult.isValid) {
+          console.log(`✓ User qualified for discount! Requested: ${discountOption.requestedProofs}, Discounted amount: ${discountedAmount}`);
+          
+          // Convert discounted atomic amount to price format
+          // amountRequired is in atomic units (e.g., "5000" = 0.005 USDC for 6 decimals)
+          // We need to convert it back to dollar format for processPriceToAtomicAmount
+          const discountedAmountNum = BigInt(discountedAmount);
+          const usdcDecimals = 6n;
+          const dollarAmount = Number(discountedAmountNum) / Number(10n ** usdcDecimals);
+          
+          // Use the discounted amount as the new price
+          finalPrice = `$${dollarAmount.toFixed(6)}`;
+          
+          verificationMetadata = {
+            qualified: true,
+            discountApplied: true,
+            requestedProofs: discountOption.requestedProofs,
+            discountedAmount: discountedAmount,
+            discountedPrice: finalPrice,
+            userProofs: userProofs,
+            verificationResult: verificationResult,
+          };
+          break; // Use first matching discount
+        }
+      }
+      
+      if (!verificationMetadata) {
+        console.log('✗ User did not qualify for any discount');
+        // Get verification result for the last checked option (if any)
+        const lastVerification = variableAmountRequired.length > 0 
+          ? verifyProofs(userProofs, variableAmountRequired[0].requestedProofs?.split(",").map((p) => p.trim()) || [])
+          : null;
+        
+        verificationMetadata = {
+          qualified: false,
+          discountApplied: false,
+          userProofs: userProofs,
+          verificationResult: lastVerification,
+        };
+      }
+    }
+
+    // Store verification metadata for use in route handler
+    req.verificationMetadata = verificationMetadata;
+
+    const atomicAmountForAsset = processPriceToAtomicAmount(finalPrice, network);
     if ("error" in atomicAmountForAsset) {
       throw new Error(atomicAmountForAsset.error);
     }
@@ -188,7 +302,6 @@ export function paymentMiddleware(
       throw new Error(`Unsupported network: ${network}`);
     }
 
-    // hello
     const payment = req.header("X-PAYMENT");
     const userAgent = req.header("User-Agent") || "";
     const acceptHeader = req.header("Accept") || "";
