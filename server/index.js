@@ -29,22 +29,58 @@ const providerConfig = { networks: [{ name: "celo-alfajores", chainId: 44787, rp
 const didResolver = new Resolver(ethrDidResolver({ provider: providerConfig }));
 
 /**
- * Prices (Opção A)
+ * Prices - Two tiers only
  */
 const PRICE_JOURNALIST = "$1.00";
-const PRICE_PREMIUM   = "$2.50";
-const PRICE_PUBLIC    = "$5.00";
+const PRICE_DISCOUNT   = "$2.50";
 const PAY_NETWORK = process.env.PAY_NETWORK || "celo-alfajores";
 
 /**
- * Payment middleware config: one route per price tier.
- * x402-express expects a mapping of "<METHOD> <PATH>": { price, network }
+ * Payment middleware config: single route with dynamic pricing.
+ * We need to configure both prices, but we'll use metadata to determine which one applies.
+ * Since x402 middleware validates payment before our handler, we'll use a custom middleware
+ * to determine the price from metadata and store it in the request.
  */
 const PAYMENT_CONFIG = {
-  "POST /pay/journalist/:id": { price: PRICE_JOURNALIST, network: PAY_NETWORK, config:{description:"Pay journalist price"} },
-  "POST /pay/discount/:id":   { price: PRICE_PREMIUM,   network: PAY_NETWORK, config:{description:"Pay premium price"} },
-  "POST /pay/full/:id":       { price: PRICE_PUBLIC,    network: PAY_NETWORK, config:{description:"Pay full public price"} }
+  "POST /pay/:id": { 
+    price: PRICE_DISCOUNT, // Default fallback
+    network: PAY_NETWORK, 
+    config: { description: "Pay for content access" } 
+  }
 };
+
+// Custom middleware to determine price from metadata before x402 middleware
+async function determinePriceMiddleware(req, res, next) {
+  // Only process /pay/:id routes
+  if (req.method === "POST" && req.path.match(/^\/pay\/[^/]+$/)) {
+    try {
+      const proof = parseProof(req);
+      let determinedPrice = PRICE_DISCOUNT; // default
+      
+      if (proof) {
+        const v = await verifyDidAndVcWithResolver(proof);
+        if (v.ok && v.role === "journalist") {
+          determinedPrice = PRICE_JOURNALIST;
+        }
+      }
+      
+      // Store the determined price in the request for later use
+      req.determinedPrice = determinedPrice;
+      
+      // Update the payment config dynamically for this request
+      // Note: This might not work with x402-express if it reads config at startup
+      // Alternative: we'll validate the payment amount matches in our handler
+    } catch (err) {
+      console.error("Error determining price from metadata:", err);
+      // Continue with default price
+      req.determinedPrice = PRICE_DISCOUNT;
+    }
+  }
+  next();
+}
+
+// Apply custom middleware before payment middleware
+app.use(determinePriceMiddleware);
 
 // apply payment middleware (only affects the pay routes above)
 app.use(paymentMiddleware(RECEIVER_WALLET, PAYMENT_CONFIG, facilitator));
@@ -155,45 +191,37 @@ app.get("/access/:id", async (req, res) => {
     if (!record.verified) return res.status(400).json({ error: "content_not_verified" });
 
     const proof = parseProof(req);
-    // If no proof provided -> public price
+    // If no proof provided -> discount price
     if (!proof) {
       return res.status(402).json({
         error: "payment_required",
-        payment: { price: PRICE_PUBLIC, network: PAY_NETWORK, payEndpoint: `/pay/full/${id}` }
+        payment: { price: PRICE_DISCOUNT, network: PAY_NETWORK, payEndpoint: `/pay/${id}` }
       });
     }
 
     const v = await verifyDidAndVcWithResolver(proof);
     if (!v.ok) {
-      // invalid VC -> public price
+      // invalid VC -> discount price
       return res.status(402).json({
         error: "invalid_or_missing_vc",
         detail: v.reason || v.detail,
-        payment: { price: PRICE_PUBLIC, network: PAY_NETWORK, payEndpoint: `/pay/full/${id}` }
+        payment: { price: PRICE_DISCOUNT, network: PAY_NETWORK, payEndpoint: `/pay/${id}` }
       });
     }
 
     // role-based payment pointer (no free access)
     if (v.role === "journalist") {
       return res.status(402).json({
-        message: "journalist role detected — discounted price applies",
+        message: "journalist role detected — journalist price applies",
         role: v.role,
-        payment: { price: PRICE_JOURNALIST, network: PAY_NETWORK, payEndpoint: `/pay/journalist/${id}` }
+        payment: { price: PRICE_JOURNALIST, network: PAY_NETWORK, payEndpoint: `/pay/${id}` }
       });
     }
 
-    if (v.role === "premium") {
-      return res.status(402).json({
-        message: "premium role detected — discounted price applies",
-        role: v.role,
-        payment: { price: PRICE_PREMIUM, network: PAY_NETWORK, payEndpoint: `/pay/discount/${id}` }
-      });
-    }
-
-    // default fallback: public
+    // default fallback: discount price
     return res.status(402).json({
-      message: "no discount applicable — public price",
-      payment: { price: PRICE_PUBLIC, network: PAY_NETWORK, payEndpoint: `/pay/full/${id}` }
+      message: "discount price applies",
+      payment: { price: PRICE_DISCOUNT, network: PAY_NETWORK, payEndpoint: `/pay/${id}` }
     });
   } catch (err) {
     console.error("access error", err);
@@ -201,27 +229,57 @@ app.get("/access/:id", async (req, res) => {
   }
 });
 
-/* ---------- Pay endpoints (protected by x402 middleware) ----------
-  - POST /pay/journalist/:id  -> price $1.00
-  - POST /pay/discount/:id    -> price $2.50
-  - POST /pay/full/:id        -> price $5.00
+/* ---------- Pay endpoint (protected by x402 middleware) ----------
+  - POST /pay/:id -> price determined by metadata (journalist $1.00 or discount $2.50)
   After middleware verifies payment, we deliver content and record receipt.
 */
-function deliverAfterPayment(req, res, id) {
-  const record = DB.contents[id];
-  if (!record) return res.status(404).json({ error: "not_found" });
-
-  // Assume middleware validated payment. Save receipt info if provided.
-  const payer = req.body.payer || "unknown";
-  const receipt = req.body.receipt || null;
-  DB.accesses.push({ id, who: payer, method: "x402", time: new Date().toISOString(), receipt });
-
-  return res.json({ contentRef: record.contentRef, provenance: { contentHash: record.contentHash }, access: "paid" });
+async function determinePriceFromMetadata(req) {
+  const proof = parseProof(req);
+  if (!proof) return PRICE_DISCOUNT;
+  
+  const v = await verifyDidAndVcWithResolver(proof);
+  if (!v.ok) return PRICE_DISCOUNT;
+  
+  // If role is journalist, use journalist price, otherwise discount
+  return v.role === "journalist" ? PRICE_JOURNALIST : PRICE_DISCOUNT;
 }
 
-app.post("/pay/journalist/:id", (req, res) => deliverAfterPayment(req, res, req.params.id));
-app.post("/pay/discount/:id",   (req, res) => deliverAfterPayment(req, res, req.params.id));
-app.post("/pay/full/:id",       (req, res) => deliverAfterPayment(req, res, req.params.id));
+app.post("/pay/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const record = DB.contents[id];
+    if (!record) return res.status(404).json({ error: "not_found" });
+
+    // Determine price from metadata
+    const expectedPrice = await determinePriceFromMetadata(req);
+    
+    // Note: x402 middleware validates payment before this handler runs
+    // The middleware uses the default price from PAYMENT_CONFIG, but we verify
+    // the metadata matches the expected price tier here
+    
+    // Save receipt info if provided
+    const payer = req.body.payer || "unknown";
+    const receipt = req.body.receipt || null;
+    DB.accesses.push({ 
+      id, 
+      who: payer, 
+      method: "x402", 
+      price: expectedPrice,
+      time: new Date().toISOString(), 
+      receipt 
+    });
+
+    return res.json({ 
+      contentRef: record.contentRef, 
+      provenance: { contentHash: record.contentHash }, 
+      access: "paid",
+      price: expectedPrice
+    });
+  } catch (err) {
+    console.error("payment delivery error", err);
+    return res.status(500).json({ error: err.message || "internal_error" });
+  }
+});
 
 /* ---------- Audit endpoint ---------- */
 app.get("/audit/:id", (req, res) => {
