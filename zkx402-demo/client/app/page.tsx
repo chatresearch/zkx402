@@ -595,7 +595,7 @@ Decoded X-PAYMENT:
           </li>
           
           <li>
-            <strong>server verifies payment using CDP facilitator</strong>
+            <strong>server <span style={{ color: '#33FF33' }}>verifies zkproofs</span> and verifies payment using CDP facilitator</strong>
             <details style={{ marginTop: "8px" }}>
               <summary style={{ cursor: "pointer", color: "#0052ff" }}>view facilitator call →</summary>
               <pre style={{ fontSize: "11px", background: "white", padding: "8px", borderRadius: "4px", marginTop: "8px", overflow: "auto" }}>
@@ -606,15 +606,14 @@ Content-Type: application/json
 {
   "x402Version": 1,
   "paymentPayload": { /* X-PAYMENT data */ },
-  "paymentRequirements": { /* from 402 response */ 
-      `}<span style={{ color: '#33FF33' }}>"zkproofs": "zkproof(abc), zkproof(def)"</span>{`        
-  }
+  "paymentRequirements": { /* from 402 response */ }
 }
 
 Response:
 {
   "isValid": true,
-  "payer": "0xYourWalletAddress"
+  "payer": "0xYourWalletAddress"`}<span style={{ color: '#33FF33' }}>,</span>{` 
+  `}<span style={{ color: '#33FF33' }}>"isVerified": true</span>{` 
 }`}
               </pre>
               <p style={{ fontSize: "13px", marginTop: "8px" }}>
@@ -624,11 +623,10 @@ Response:
           </li>
           
           <li>
-            <strong>Facilitator <span style={{ color: '#33FF33' }}>verifies zkproofs</span> and settles payment on Base Sepolia</strong>
+            <strong>Facilitator settles payment on Base Sepolia</strong>
             <details style={{ marginTop: "8px" }}>
               <summary style={{ cursor: "pointer", color: "#0052ff" }}>view settlement →</summary>
               <div style={{ fontSize: "13px", marginTop: "8px", lineHeight: "1.6" }}>
-                <p style={{ color: '#33FF33' }}>Facilitator verifies eligibility of zkproofs</p>
                 <p>Facilitator calls USDC contract's <code>transferWithAuthorization</code>:</p>
                 <ul style={{ marginLeft: "20px", marginTop: "8px" }}>
                   <li>submits your signed authorization to the blockchain</li>
