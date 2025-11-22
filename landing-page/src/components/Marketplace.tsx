@@ -12,6 +12,7 @@ import flightLogsImg from "@/assets/leak-flight-logs.jpg";
 import wifiLogsImg from "@/assets/leak-wifi-logs.jpg";
 import conspiracyBingoImg from "@/assets/leak-conspiracy-bingo.jpg";
 import pentagonTyposImg from "@/assets/leak-pentagon-typos.jpg";
+import TrumpSecretaryImg from "@/assets/leak-trump-secretary.png";
 
 interface MarketplaceProps {
   isWalletConnected: boolean;
@@ -46,8 +47,8 @@ const mockData = [
   },
   {
     id: "3",
-    title: "Covfefe Translation Dictionary",
-    description: "Comprehensive linguistic analysis of presidential typos. Includes pronunciation guide, etymology theories, and international translations. Now recognized by Oxford Dictionary (not really)",
+    title: "Presidential Desk Drawer Leak (Totally Not Classified)",
+    description: "An entirely fictional archive of mysterious items allegedly found in a former president’s desk drawer. Includes doodles, fast-food coupons, unsigned executive orders, and a map to the lost golf tees of Mar-a-Lago. Absolutely no real secrets inside (seriously)",
     type: "data" as const,
     price: 0.02,
     verifiedPrice: 0.01,
@@ -55,7 +56,7 @@ const mockData = [
     dataPoints: 89,
     timestamp: "2024-01-13",
     tags: ["Twitter", "Presidential", "Linguistics", "Typos"],
-    imageUrl: covfefeDictionaryImg,
+    imageUrl: TrumpSecretaryImg,
   },
   {
     id: "4",
