@@ -41,6 +41,7 @@ app.use(paymentMiddleware(
             timestamp: { type: "string", description: "when the quote was generated" }
           }
         },
+        // zkx402 additions
         extra: {
           variableAmountRequired: [{ 
             requestedProofs: "zkproofOf(human), zkproofOf(instituion=NYT)", amountRequired: "5000" 
