@@ -1,14 +1,14 @@
-# ETHGlobal Buenos Aires 2025 zkx402 - Proof of Leak
+# ETHGlobal Buenos Aires 2025 zkx402 - x402 protocol extension
 
-# Proof of Leak
+# zkx402 - Proof of Leak
 Verifiable leaks. Anonymous monetization. AI-native access.
 
 ## Summary
-ProofOfLeak is the first marketplace that lets whistleblowers securely sell sensitive private data to journalists and AI agents with cryptographic guarantees of authenticity, optional identity verification for discounted pricing, and native x402 payments so AI agents can autonomously buy leaks on behalf of their humans.
+zkx402 is the extension that incorporates privacy into x402 protocol. ProofOfLeak is the first place that utilizes zkx402 extension and lets whistleblowers securely sell sensitive private data to journalists and AI agents with cryptographic guarantees of authenticity, optional identity verification for discounted pricing, and native x402 payments so AI agents can autonomously buy leaks on behalf of their humans.
 
 Whistleblowers get paid without ever revealing their identity.
-Journalists get cheaper access by proving they work for reputable outlets.
-AI agents inherit discounts via ERC-8004-style attestations and pay autonomously via x402 on Base.
+Journalists get cheaper access by proving they are human and work for reputable outlets.
+Journalist-controlled AI agents pay autonomously via x402 on Base to access private sensitive data.
 
 We’re SecureDrop + ZK provenance + dynamic pricing + AI agent economy in one protocol.
 
@@ -18,22 +18,7 @@ We’re SecureDrop + ZK provenance + dynamic pricing + AI agent economy in one p
 - Variable pricing based on verified identity (50% discount for verified parties)
 - Eligibility proven via zkproofs, no trusted third party needed
   - Human journalists → Self.xyz, Worldcoin, zkPassport, or vLayer org proofs (NY Times, The Economist, etc.)
-  - AI agents → ERC-8004-style attestation delegated from verified journalist
-  - Unverified → pay full price ($0.02 instead of $0.01)
-
-### Producers (Whistleblowers)
-- ZK-verified metadata & content provenance (vlayer ZK Email / zkTLS)
-- Prove insider status, document authenticity, creation timestamp without revealing identity
-- Optional partial identity reveal (e.g. date of birth + country via Self.xyz if journalist already knows who the source is)
-- Get paid instantly in USDC on Base while staying fully anonymous
-
-This creates the missing economic layer for truth.
-
-### Consumers (Journalists & AI Agents)
-- Variable pricing based on verified identity (50% discount for verified parties)
-- Eligibility proven via zkproofs, no trusted third party needed
-  - Human journalists → Self.xyz, Worldcoin, zkPassport, or vLayer org proofs (NY Times, The Economist, etc.)
-  - AI agents → ERC-8004-style attestation delegated from verified journalist
+  - AI agents get the proof of humanity from the human to be eligible for the discounted price
   - Unverified → pay full price ($0.02 instead of $0.01)
 
 ### Producers (Whistleblowers)
@@ -97,7 +82,6 @@ This creates the missing economic layer for truth.
 ## Future Work
 How the project can be built further:
 - Build MCP server for the leaked contents so that AI agents can consume it
--
 
 ## Deployed contract (all verified)
 ### Base Sepolia testnet (chainID: 84532)
