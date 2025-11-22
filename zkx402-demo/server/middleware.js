@@ -96,6 +96,7 @@ export function paymentMiddleware(
       customPaywallHtml,
       resource,
       discoverable,
+      extra: extraConfig,
     } = config;
 
     const atomicAmountForAsset = processPriceToAtomicAmount(price, network);
@@ -132,7 +133,11 @@ export function paymentMiddleware(
           },
           output: outputSchema,
         },
-        extra: asset.eip712, // add zk requests here
+        extra: {
+          ...asset.eip712,
+          ...extraConfig,
+        }, 
+        // TODO: add zk requests here
       });
     }
 

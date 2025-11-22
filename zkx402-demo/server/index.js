@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
-import { paymentMiddleware } from "x402-express";
+// import { paymentMiddleware } from "x402-express";
+import { paymentMiddleware } from "./middleware.js";
 import { facilitator } from "@coinbase/x402";
 import dotenv from "dotenv";
 import { requestFaucet } from "./faucet.js";
@@ -39,6 +40,15 @@ app.use(paymentMiddleware(
             quote: { type: "string", description: "an inspirational quote" },
             timestamp: { type: "string", description: "when the quote was generated" }
           }
+        },
+        extra: {
+          variableAmountRequired: [{ 
+            requestedProofs: "zkproofOf(human), zkproofOf(instituion=NYT)", amountRequired: "5000" 
+          }],
+          contentMetadata: [
+            { proof: "zkproof(Edward Snowden)" },
+            { proof: "zkproof(human)" }
+          ]
         }
       }
     }
@@ -51,7 +61,7 @@ app.get("/motivate", (req, res) => {
   res.json({
     quote: "Innovation happens when ideas collide, and blockchain is the perfect collision of technology and finance. --Vitalik Buterin",
     timestamp: new Date().toISOString(),
-    paid: true
+    paid: true,
   });
 });
 
