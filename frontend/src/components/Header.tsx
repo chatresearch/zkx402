@@ -33,7 +33,7 @@ export const Header = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold text-foreground">ZKx402</h1>
-              <p className="text-xs text-muted-foreground">Verified Data</p>
+              <p className="text-xs text-muted-foreground">Proof of Leak</p>
             </div>
           </NavLink>
           
@@ -43,14 +43,14 @@ export const Header = () => {
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-smooth"
               activeClassName="text-foreground"
             >
-              Producer
+              Producer (Whistleblower)
             </NavLink>
             <NavLink 
               to="/consumer" 
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-smooth"
               activeClassName="text-foreground"
             >
-              Consumer
+              Consumer (Journalist)
             </NavLink>
           </nav>
         </div>
