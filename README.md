@@ -34,14 +34,5 @@ PAY_NETWORK=celo-alfajores
 
 ---
 
-## Key Endpoints
-
-POST /upload — submit encrypted content + ZK proof
-GET /access/:id — get price tier based on DID + VC
-POST /pay/journalist/:id — discounted price
-POST /pay/discount/:id — intermediate price
-POST /pay/full/:id — public price
-GET /audit/:id — proof + payment log
-
 ## License
 This project is licensed under the terms of the [MIT License](LICENSE).
