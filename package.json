@@ -1,0 +1,36 @@
+{
+  "name": "x402-demo",
+  "version": "1.0.0",
+  "description": "Complete x402 payment protocol demonstration",
+  "scripts": {
+    "install:all": "cd server && npm install && cd ../client && npm install",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "dev": "echo 'Run these in separate terminals:' && echo '  npm run dev:server' && echo '  npm run dev:client'"
+  },
+  "keywords": [
+    "x402",
+    "payments",
+    "crypto",
+    "api",
+    "coinbase",
+    "base",
+    "usdc"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@coinbase/cdp-hooks": "^0.0.66",
+    "@coinbase/x402": "^0.7.3",
+    "@vlayer/sdk": "^1.5.1-nightly-20251103-b84a901b51aac170c55042366a1bc2c2ae96148f",
+    "cors": "^2.8.5",
+    "did-jwt": "^8.0.18",
+    "did-resolver": "^4.1.0",
+    "dotenv": "^17.2.3",
+    "ethers": "^6.15.0",
+    "ethr-did-resolver": "^11.0.5",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "x402-express": "^0.7.3"
+  }
+}
