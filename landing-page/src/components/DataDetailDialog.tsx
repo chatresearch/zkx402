@@ -90,10 +90,6 @@ export const DataDetailDialog = ({ data, isOpen, onClose, isWalletConnected }: D
               <div className="text-sm text-muted-foreground mb-1">Type</div>
               <div className="text-lg font-semibold capitalize">{data.type}</div>
             </div>
-            <div>
-              <div className="text-sm text-muted-foreground mb-1">Storage</div>
-              <div className="text-lg font-semibold">IPFS</div>
-            </div>
           </div>
 
           <Separator />
