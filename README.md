@@ -15,12 +15,12 @@ Whistleblower uploads the private data -> proves the data is real via zkproof of
 ---
 
 ## How MCP Server works
-1. Whistleblower uploads content + ZK proof (`POST /upload`)  
-2. MCP verifies the proof and stores metadata  
-3. User requests access (`GET /access/:id`) with DID + VC  
-4. MCP assigns the correct price tier  
-5. User pays using x402 (`POST /pay/.../:id`)  
-6. MCP returns the verified content reference  
+1. Whistleblower uploads content reference + content hash + ZK proof job hash (`POST /upload`)  
+2. MCP waits for vlayer proof completion and verifies the content hash matches the journal  
+3. User requests access (`GET /access/:id`) with DID + VC (via `x-proof` header or body)  
+4. MCP verifies DID ownership and VC, then returns 402 with role-based pricing (journalist: $1.00, discount: $2.50)  
+5. User pays using x402 (`POST /pay/:id`) with the same DID + VC metadata  
+6. MCP validates payment via x402 middleware and returns the verified content reference  
 
 ---
 
