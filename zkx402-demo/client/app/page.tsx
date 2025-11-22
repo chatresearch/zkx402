@@ -214,6 +214,99 @@ export default function Home() {
     setPaymentInfo(null);
     
     try {
+      console.log("make request to check zkx402 support", `${API_URL}/motivate`);
+      const response0 = await fetch(`${API_URL}/motivate`, {
+        method: "GET",
+      });
+      if (!response0.ok && response0.status !== 402) {
+        throw new Error(`Expected 402 Payment Required, got: ${response0.status}`);
+      }
+      // Extract contentMetadata and variableAmountRequired from payment requirements
+      const data0 = await response0.json();
+      const paymentRequirement = data0.accepts?.[0];
+      const contentMetadata = paymentRequirement?.extra?.contentMetadata;
+      const variableAmountRequired = paymentRequirement?.extra?.variableAmountRequired;
+      console.log("paymentRequirement:", paymentRequirement);
+      console.log("contentMetadata:", contentMetadata);
+      console.log("variableAmountRequired:", variableAmountRequired);
+
+      // Verify metadata zkproofs and decide whether to proceed with payment
+      // Hard coded contentMetadata requirement we require
+      const requiredProof = "zkproof(human)";
+      
+      // Check if the required proof exists in contentMetadata
+      const hasRequiredProof = contentMetadata?.some(
+        (item: any) => item.proof === requiredProof
+      );
+      
+      console.log(`Required proof: ${requiredProof}`);
+      console.log(`Has required proof: ${hasRequiredProof}`);
+      
+      // Dummy function to verify the proof
+      async function verifyProof(proof: string): Promise<boolean> {
+        // TODO: Implement actual ZK proof verification
+        // For now, just check if proof exists in contentMetadata
+        const exists = contentMetadata?.some(
+          (item: any) => item.proof === proof
+        );
+        
+        // Dummy verification logic - in real implementation, this would:
+        // 1. Verify the ZK proof cryptographically
+        // 2. Check proof validity and expiration
+        // 3. Validate proof against requirements
+        
+        if (exists) {
+          console.log(`✓ Proof verified: ${proof}`);
+          return true;
+        } else {
+          console.log(`✗ Proof not found: ${proof}`);
+          return false;
+        }
+      }
+      
+      // Verify the required proof
+      const isVerified = await verifyProof(requiredProof);
+      
+      if (!isVerified) {
+        throw new Error(`Required proof not found: ${requiredProof}`);
+      }
+
+      // self-verify if i am eligible for a discount
+      // Hard code the proofs that I have
+      const myProofs = [
+        "zkproofOf(human)",
+        "zkproofOf(instituion=NYT)"
+      ];
+      
+      console.log("My proofs:", myProofs);
+      
+      // Check if I qualify for discounts specified in variableAmountRequired
+      if (variableAmountRequired && Array.isArray(variableAmountRequired)) {
+        for (const discountOption of variableAmountRequired) {
+          const requestedProofs = discountOption.requestedProofs?.split(",").map((p: string) => p.trim()) || [];
+          const amountRequired = discountOption.amountRequired;
+          
+          console.log(`Checking discount option: ${discountOption.requestedProofs} -> ${amountRequired}`);
+          
+          // Check if all requested proofs are in my proofs
+          const hasAllProofs = requestedProofs.every((requiredProof: string) =>
+            myProofs.some((myProof: string) => myProof === requiredProof)
+          );
+          
+          if (hasAllProofs) {
+            console.log(`✓ Qualified for discount! Amount required: ${amountRequired}`);
+            // Store the discount information for later use
+            // You can use this to adjust the payment amount
+          } else {
+            console.log(`✗ Not qualified for this discount option`);
+          }
+        }
+      }
+      
+
+
+
+
       console.log("using CDP x402 hook to make paid request to", `${API_URL}/motivate`);
       
       // make paid request using CDP's new useX402 hook
