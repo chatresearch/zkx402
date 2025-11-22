@@ -188,6 +188,7 @@ export function paymentMiddleware(
       throw new Error(`Unsupported network: ${network}`);
     }
 
+    // hello
     const payment = req.header("X-PAYMENT");
     const userAgent = req.header("User-Agent") || "";
     const acceptHeader = req.header("Accept") || "";
