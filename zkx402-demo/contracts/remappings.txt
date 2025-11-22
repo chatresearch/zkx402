@@ -1,0 +1,5 @@
+@openzeppelin/=lib/openzeppelin-contracts/
+@hyperlane/=lib/hyperlane-monorepo/solidity/
+@selfxyz/contracts/=node_modules/@selfxyz/contracts/
+forge-std/=lib/forge-std/src/
+
