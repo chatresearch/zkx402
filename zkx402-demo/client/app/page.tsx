@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import { ethers } from "ethers";
 import { 
   useCurrentUser,
   useIsSignedIn,
@@ -14,6 +16,7 @@ import {
 } from "@coinbase/cdp-hooks";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const BASE_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_BASE_REGISTRY_ADDRESS || "";
 
 interface ApiResponse {
   quote: string;
@@ -53,6 +56,9 @@ export default function Home() {
   const [faucetSuccess, setFaucetSuccess] = useState<string>("");
   const [showExplanation, setShowExplanation] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  const [verificationData, setVerificationData] = useState<any>(null);
+  const [checkingVerification, setCheckingVerification] = useState(false);
 
   const address = currentUser?.evmAccounts?.[0];
 
@@ -60,6 +66,7 @@ export default function Home() {
   useEffect(() => {
     if (address) {
       fetchBalance();
+      checkVerification();
     }
   }, [address]);
 
@@ -78,6 +85,46 @@ export default function Home() {
       console.log(`balance updated: ${data.balance} USDC for ${address}`);
     } catch (err) {
       console.error("error fetching balance:", err);
+    }
+  };
+
+  const checkVerification = async () => {
+    if (!address || !BASE_REGISTRY_ADDRESS) return;
+    
+    setCheckingVerification(true);
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const registry = new ethers.Contract(
+        BASE_REGISTRY_ADDRESS,
+        [
+          "function isVerified(address) view returns (bool)",
+          "function getVerificationDetails(address) view returns (bool, uint256, bytes32, bool, string)",
+          "function getNationality(address) view returns (string)",
+          "function isFromRussia(address) view returns (bool)"
+        ],
+        provider
+      );
+
+      const verified = await registry.isVerified(address);
+      setIsVerified(verified);
+
+      if (verified) {
+        // Get detailed verification data
+        const details = await registry.getVerificationDetails(address);
+        const nationality = await registry.getNationality(address);
+        const fromRussia = await registry.isFromRussia(address);
+        
+        setVerificationData({
+          verified: details[0],
+          timestamp: Number(details[1]),
+          isFromRussia: fromRussia,
+          nationality: nationality
+        });
+      }
+    } catch (err) {
+      console.error("Error checking verification:", err);
+    } finally {
+      setCheckingVerification(false);
     }
   };
 
@@ -214,6 +261,99 @@ export default function Home() {
     setPaymentInfo(null);
     
     try {
+      console.log("make request to check zkx402 support", `${API_URL}/motivate`);
+      const response0 = await fetch(`${API_URL}/motivate`, {
+        method: "GET",
+      });
+      if (!response0.ok && response0.status !== 402) {
+        throw new Error(`Expected 402 Payment Required, got: ${response0.status}`);
+      }
+      // Extract contentMetadata and variableAmountRequired from payment requirements
+      const data0 = await response0.json();
+      const paymentRequirement = data0.accepts?.[0];
+      const contentMetadata = paymentRequirement?.extra?.contentMetadata;
+      const variableAmountRequired = paymentRequirement?.extra?.variableAmountRequired;
+      console.log("paymentRequirement:", paymentRequirement);
+      console.log("contentMetadata:", contentMetadata);
+      console.log("variableAmountRequired:", variableAmountRequired);
+
+      // Verify metadata zkproofs and decide whether to proceed with payment
+      // Hard coded contentMetadata requirement we require
+      const requiredProof = "zkproof(human)";
+      
+      // Check if the required proof exists in contentMetadata
+      const hasRequiredProof = contentMetadata?.some(
+        (item: any) => item.proof === requiredProof
+      );
+      
+      console.log(`Required proof: ${requiredProof}`);
+      console.log(`Has required proof: ${hasRequiredProof}`);
+      
+      // Dummy function to verify the proof
+      async function verifyProof(proof: string): Promise<boolean> {
+        // TODO: Implement actual ZK proof verification
+        // For now, just check if proof exists in contentMetadata
+        const exists = contentMetadata?.some(
+          (item: any) => item.proof === proof
+        );
+        
+        // Dummy verification logic - in real implementation, this would:
+        // 1. Verify the ZK proof cryptographically
+        // 2. Check proof validity and expiration
+        // 3. Validate proof against requirements
+        
+        if (exists) {
+          console.log(`✓ Proof verified: ${proof}`);
+          return true;
+        } else {
+          console.log(`✗ Proof not found: ${proof}`);
+          return false;
+        }
+      }
+      
+      // Verify the required proof
+      const isVerified = await verifyProof(requiredProof);
+      
+      if (!isVerified) {
+        throw new Error(`Required proof not found: ${requiredProof}`);
+      }
+
+      // self-verify if i am eligible for a discount
+      // Hard code the proofs that I have
+      const myProofs = [
+        "zkproofOf(human)",
+        "zkproofOf(instituion=NYT)"
+      ];
+      
+      console.log("My proofs:", myProofs);
+      
+      // Check if I qualify for discounts specified in variableAmountRequired
+      if (variableAmountRequired && Array.isArray(variableAmountRequired)) {
+        for (const discountOption of variableAmountRequired) {
+          const requestedProofs = discountOption.requestedProofs?.split(",").map((p: string) => p.trim()) || [];
+          const amountRequired = discountOption.amountRequired;
+          
+          console.log(`Checking discount option: ${discountOption.requestedProofs} -> ${amountRequired}`);
+          
+          // Check if all requested proofs are in my proofs
+          const hasAllProofs = requestedProofs.every((requiredProof: string) =>
+            myProofs.some((myProof: string) => myProof === requiredProof)
+          );
+          
+          if (hasAllProofs) {
+            console.log(`✓ Qualified for discount! Amount required: ${amountRequired}`);
+            // Store the discount information for later use
+            // You can use this to adjust the payment amount
+          } else {
+            console.log(`✗ Not qualified for this discount option`);
+          }
+        }
+      }
+      
+
+
+
+
       console.log("using CDP x402 hook to make paid request to", `${API_URL}/motivate`);
       
       // make paid request using CDP's new useX402 hook
@@ -261,7 +401,7 @@ export default function Home() {
       {/* Top Nav */}
       <div className="top-nav">
         <div className="nav-left">
-          <h1><span style={{ color: '#33FF33' }}>zk</span>x402 demo</h1>
+          <h1>x402 demo</h1>
           <p>pay for APIs with crypto</p>
         </div>
         <div className="nav-right">
@@ -448,6 +588,93 @@ export default function Home() {
         ) : (
           // Signed in - show main CTA
           <>
+            {/* Verification Status Banner */}
+            {BASE_REGISTRY_ADDRESS && (
+              <div style={{ marginBottom: "30px" }}>
+                {checkingVerification ? (
+                  <div style={{ 
+                    background: "#f5f5f5", 
+                    padding: "20px", 
+                    borderRadius: "12px",
+                    textAlign: "center"
+                  }}>
+                    <p>checking verification status...</p>
+                  </div>
+                ) : isVerified && verificationData ? (
+                  <div style={{ 
+                    background: "#e8f5e9", 
+                    padding: "24px", 
+                    borderRadius: "12px",
+                    border: "2px solid #4caf50",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between"
+                  }}>
+                    <div>
+                      <h3 style={{ margin: "0 0 8px 0", color: "#2e7d32", fontSize: "20px" }}>
+                        ✓ verified human
+                      </h3>
+                      <p style={{ margin: "4px 0", fontSize: "14px", color: "#666" }}>
+                        nationality: {verificationData.nationality}
+                      </p>
+                      <p style={{ margin: "4px 0", fontSize: "14px", color: "#666" }}>
+                        verified: {new Date(verificationData.timestamp * 1000).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <button
+                      onClick={checkVerification}
+                      style={{
+                        background: "#2e7d32",
+                        color: "white",
+                        border: "none",
+                        padding: "8px 16px",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "14px"
+                      }}
+                    >
+                      refresh
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ 
+                    background: "#fff3cd", 
+                    padding: "24px", 
+                    borderRadius: "12px",
+                    border: "2px solid #ffc107",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between"
+                  }}>
+                    <div>
+                      <h3 style={{ margin: "0 0 8px 0", color: "#ff9800", fontSize: "20px" }}>
+                        ⚠️ not verified
+                      </h3>
+                      <p style={{ margin: 0, fontSize: "14px", color: "#666" }}>
+                        prove you're human with Self Protocol
+                      </p>
+                    </div>
+                    <Link 
+                      href="/verify"
+                      style={{
+                        background: "#ff9800",
+                        color: "white",
+                        border: "none",
+                        padding: "12px 24px",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        fontSize: "16px",
+                        textDecoration: "none",
+                        display: "inline-block"
+                      }}
+                    >
+                      verify now →
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="cta-section">
               <h2>call paid API</h2>
               <p>get a motivational quote for 0.01 USDC</p>
@@ -501,12 +728,12 @@ export default function Home() {
           className="expand-button"
           onClick={() => setShowExplanation(!showExplanation)}
         >
-          {showExplanation ? '▼ hide details' : <>▶ how <span style={{ color: '#33FF33' }}>zk</span>x402 works</>}
+          {showExplanation ? '▼ hide details' : '▶ how x402 works'}
         </button>
         
         {showExplanation && (
           <div className="expanded-content">
-            <h3>how <span style={{ color: '#33FF33' }}>zk</span>x402 works:</h3>
+            <h3>how x402 works:</h3>
         <ol>
           <li>
             <strong>user clicks "Get Motivational Quote"</strong>
@@ -528,7 +755,7 @@ export default function Home() {
 Content-Type: application/json
 
 {
-  "scheme": "`}<span style={{ color: '#33FF33' }}>variable</span>{`",
+  "scheme": "exact",
   "network": "base-sepolia",
   "maxAmountRequired": "10000",
   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
@@ -552,8 +779,7 @@ Content-Type: application/json
               <div style={{ fontSize: "13px", marginTop: "8px", lineHeight: "1.6" }}>
                 <p>Uses <strong>EIP-3009 transferWithAuthorization</strong>:</p>
                 <ul style={{ marginLeft: "20px", marginTop: "8px" }}>
-                  <li style={{ textDecoration: 'line-through' }}>creates USDC transfer authorization (0.01 USDC = 10,000 units)</li>
-                  <li style={{ color: '#33FF33' }}>creates USDC transfer authorization (0.005 USDC = 5,000 units)</li>
+                  <li>creates USDC transfer authorization (0.01 USDC = 10,000 units)</li>
                   <li>sets <code>from</code> (your wallet) and <code>to</code> (receiver)</li>
                   <li>adds <code>validBefore</code> timestamp (expiration)</li>
                   <li>generates unique <code>nonce</code> (prevents replay attacks)</li>
@@ -582,7 +808,7 @@ Decoded X-PAYMENT:
     "authorization": {
       "from": "0xYourWalletAddress",
       "to": "0x036CbD...USDC",
-      "value": "`}<span style={{ color: '#33FF33' }}>5000</span>{`",
+      "value": "10000",
       "validAfter": "0",
       "validBefore": "1731362400",
       "nonce": "0xdef456..."`}<span style={{ color: '#33FF33' }}>,</span>{`
