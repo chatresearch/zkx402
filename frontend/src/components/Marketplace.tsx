@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Image, Database } from "lucide-react";
 import nsaSantaImg from "@/assets/leak-nsa-santa.jpg";
 import prismPowerpointImg from "@/assets/leak-prism-powerpoint.jpg";
-import covfefeDictionaryImg from "@/assets/leak-covfefe-dictionary.jpg";
 import alternativeFactsImg from "@/assets/leak-alternative-facts.jpg";
 import sharpieHurricaneImg from "@/assets/leak-sharpie-hurricane.jpg";
 import flightLogsImg from "@/assets/leak-flight-logs.jpg";
