@@ -103,21 +103,29 @@ The verified smart contract for Celo testnet is:
 
 
 ## How to run locally
-### Frontend
-Go to the "frontend" folder and run these commands:
+### Client
+Go to the "client" folder and run these commands after filling in the environment variables based on the example env file:
 ```bash
-cd frontend
-npm install
-npm run dev
+cd zkx402-demo
+npm run install:all
+npm run dev:server
+npm run dev:client
+
+open client in browser: localhost:3000
 ```
-### Backend
-For backend, go to the "backend" folder and run these commands:
+### Server
+For server, go to the "server" folder and run these commands after filling in the environment variables based on the example env file:
 ```bash
-npm install
-npm run dev
+cd zkx402-demo
+npm run install:all
+npm run dev:server
+npm run dev:client
+
+open server in terminal
 ```
 
 ## Demo movie
-
+https://youtu.be/kEA0Jhq6qjM
 
 ## Demo site
+https://zkx402.io
