@@ -11,6 +11,7 @@ import {
   Zap,
   Shield,
   Terminal,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -112,7 +113,8 @@ export const ProducerUpload = () => {
       return trimmed;
     }
 
-    // 2. Full URL with workspace
+    // 2. Full URL with workspace and direct ID: notion.so/workspace/32hexchars
+    // Example: notion.so/ghostxd/9a7733de700a4f1b89d5e4efadbbb62d
     const fullUrlMatch = trimmed.match(
       /notion\.so\/[^/]+\/([a-f0-9]{32})(?:\?|$|#)/i
     );
@@ -120,13 +122,24 @@ export const ProducerUpload = () => {
       return fullUrlMatch[1];
     }
 
-    // 3. URL with title
+    // 3. URL with workspace and title slug: notion.so/workspace/title-32hexchars
+    // Example: notion.so/ghostxd/zkx402-2b4fd7f25b3280c0a09cec1797658f5d
+    // This pattern specifically handles workspace/title-ID format
+    const workspaceTitleMatch = trimmed.match(
+      /notion\.so\/[^/]+\/[^/]+-([a-f0-9]{32})(?:\?|$|#)/i
+    );
+    if (workspaceTitleMatch && workspaceTitleMatch[1]) {
+      return workspaceTitleMatch[1];
+    }
+
+    // 4. URL with title slug (no workspace or workspace in domain): notion.so/title-32hexchars
+    // Example: notion.so/zkx402-leak-cat-image-2b47fbfd218080feb49be38fb6aa3ac7
     const titleUrlMatch = trimmed.match(/-([a-f0-9]{32})(?:\?|$|#)/i);
     if (titleUrlMatch && titleUrlMatch[1]) {
       return titleUrlMatch[1];
     }
 
-    // 4. UUID format with hyphens
+    // 5. UUID format with hyphens: 9a7733de-700a-4f1b-89d5-e4efadbbb62d
     const uuidMatch = trimmed.match(
       /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i
     );
@@ -134,10 +147,13 @@ export const ProducerUpload = () => {
       return uuidMatch[1].replace(/-/g, '');
     }
 
-    // 5. Try to find any 32-char hex string
-    const anyHexMatch = trimmed.match(/([a-f0-9]{32})/i);
-    if (anyHexMatch && anyHexMatch[1]) {
-      return anyHexMatch[1];
+    // 6. Fallback: Try to find any 32-char hex string (matches the last occurrence)
+    // This is useful for URLs where the ID appears anywhere in the string
+    const hexMatches = trimmed.matchAll(/([a-f0-9]{32})/gi);
+    const matches = Array.from(hexMatches);
+    if (matches.length > 0) {
+      // Return the last match (most likely to be the page ID)
+      return matches[matches.length - 1][1];
     }
 
     return null;
@@ -184,6 +200,62 @@ export const ProducerUpload = () => {
 
   const addLog = (message: string) => {
     setProofLogs((prev) => [...prev, `> ${message}`]);
+  };
+
+  const exportProofData = (proofData: Presentation) => {
+    try {
+      // Create a comprehensive proof data object
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        proofType: isVlayerProof(proofData) ? 'vlayer' : 'mock',
+        ...proofData,
+        // Include metadata about the export
+        exportMetadata: {
+          fileName: selectedFile?.name || 'unknown',
+          sourceType: sourceType,
+          originUrl: sourceType === 'notion' ? notionPageUrl : originUrl,
+          // Note: auth header is intentionally excluded for security
+        },
+      };
+
+      // Convert to JSON string
+      const jsonString = JSON.stringify(exportData, null, 2);
+
+      // Create a blob and download
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      // Generate filename with timestamp
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, '-')
+        .slice(0, -5);
+      const fileName = `proof-${timestamp}.json`;
+      link.download = fileName;
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      addLog(`📥 Proof data exported to ${fileName}`);
+
+      toast({
+        title: 'Proof Exported 📥',
+        description: `Proof data saved to ${fileName}`,
+      });
+    } catch (error) {
+      console.error('Error exporting proof data:', error);
+      addLog('❌ Error exporting proof data');
+      toast({
+        title: 'Export Failed',
+        description: 'Failed to export proof data',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleGenerateProof = async () => {
@@ -271,12 +343,16 @@ export const ProducerUpload = () => {
               )}-${pageId.substring(20)}`
             : pageId;
 
-        urlToProve = `https://api.notion.com/v1/databases/${formattedPageId}`;
+        // Try pages endpoint first (more common), then fall back to databases
+        // We'll let the API try both if needed
+        urlToProve = `https://api.notion.com/v1/pages/${formattedPageId}`;
         headers.push('Notion-Version: 2022-06-28');
         headers.push('Accept: application/json');
         headers.push(`Authorization: ${authValue}`);
 
-        addLog(`Fetching Notion page: ${formattedPageId}`);
+        addLog(
+          `Fetching Notion resource: ${formattedPageId} (trying pages endpoint)`
+        );
       } else {
         // GitHub or Demo
         urlToProve = originUrl.trim();
@@ -365,6 +441,9 @@ export const ProducerUpload = () => {
           'Unrecognized proof format from server. Check console for details.'
         );
       }
+
+      // Export proof data to file
+      exportProofData(data);
 
       toast({
         title: 'Origin Verified ✨',
@@ -762,12 +841,23 @@ export const ProducerUpload = () => {
                 {/* Verified Data Display */}
                 {presentation && (
                   <Card className="bg-muted/50 border-primary/30 p-6">
-                    <h4 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-primary" />
-                      {isVlayerProof(presentation)
-                        ? 'vlayer Proof Data'
-                        : 'Verified Data Preview'}
-                    </h4>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-primary" />
+                        {isVlayerProof(presentation)
+                          ? 'vlayer Proof Data'
+                          : 'Verified Data Preview'}
+                      </h4>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => exportProofData(presentation)}
+                        className="gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        Export Proof
+                      </Button>
+                    </div>
                     <div className="bg-background rounded-lg p-4 max-h-96 overflow-y-auto">
                       <pre className="text-xs text-muted-foreground overflow-x-auto">
                         {(() => {

@@ -70,14 +70,60 @@ app.post('/api/prove', async (req, res) => {
     let responseData = null;
     let statusCode = 200;
     let responseBody = '';
+    let finalUrl = url;
     
     try {
-      const response = await fetch(url, {
+      let response = await fetch(finalUrl, {
         method: 'GET',
         headers: headersObj
       });
       
       statusCode = response.status;
+      
+      // Handle Notion API: if pages endpoint returns 404, try databases endpoint
+      if (statusCode === 404 && finalUrl.includes('api.notion.com/v1/pages/')) {
+        const pageIdMatch = finalUrl.match(/\/v1\/pages\/([^/?]+)/);
+        if (pageIdMatch && pageIdMatch[1]) {
+          const pageId = pageIdMatch[1];
+          const databaseUrl = finalUrl.replace('/v1/pages/', '/v1/databases/');
+          console.log(`🔄 [PROVE] Pages endpoint returned 404, trying databases endpoint: ${databaseUrl}`);
+          
+          response = await fetch(databaseUrl, {
+            method: 'GET',
+            headers: headersObj
+          });
+          
+          statusCode = response.status;
+          finalUrl = databaseUrl;
+          
+          if (statusCode === 200) {
+            console.log('✅ [PROVE] Databases endpoint succeeded');
+          }
+        }
+      }
+      
+      // Also handle the reverse: if databases returns 404, try pages
+      if (statusCode === 404 && finalUrl.includes('api.notion.com/v1/databases/')) {
+        const databaseIdMatch = finalUrl.match(/\/v1\/databases\/([^/?]+)/);
+        if (databaseIdMatch && databaseIdMatch[1]) {
+          const databaseId = databaseIdMatch[1];
+          const pageUrl = finalUrl.replace('/v1/databases/', '/v1/pages/');
+          console.log(`🔄 [PROVE] Databases endpoint returned 404, trying pages endpoint: ${pageUrl}`);
+          
+          response = await fetch(pageUrl, {
+            method: 'GET',
+            headers: headersObj
+          });
+          
+          statusCode = response.status;
+          finalUrl = pageUrl;
+          
+          if (statusCode === 200) {
+            console.log('✅ [PROVE] Pages endpoint succeeded');
+          }
+        }
+      }
+      
       const contentType = response.headers.get('content-type');
       
       if (contentType && contentType.includes('application/json')) {
