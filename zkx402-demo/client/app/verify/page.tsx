@@ -770,7 +770,7 @@ export default function VerifyPage() {
           <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#666' }}>
             contract:{' '}
             <a
-              href={`https://sepolia.basescan.org/address/${BASE_REGISTRY_ADDRESS}#readContract`}
+              href={`https://base-sepolia.blockscout.com/address/${BASE_REGISTRY_ADDRESS}?tab=contract`}
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: '#1976d2', fontFamily: 'monospace' }}
@@ -826,7 +826,7 @@ export default function VerifyPage() {
           <p style={{ margin: '15px 0 0 0', fontSize: '12px', color: '#666' }}>
             queries:{' '}
             <a
-              href={`https://sepolia.basescan.org/address/${BASE_REGISTRY_ADDRESS}#readContract`}
+              href={`https://base-sepolia.blockscout.com/address/${BASE_REGISTRY_ADDRESS}?tab=contract`}
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: '#1976d2', fontFamily: 'monospace' }}
@@ -949,7 +949,7 @@ export default function VerifyPage() {
             )}
             {bridgeStatus === 'base_verified' && address && (
               <a
-                href={`https://sepolia.basescan.org/address/${BASE_REGISTRY_ADDRESS}#events`}
+                href={`https://base-sepolia.blockscout.com/address/${BASE_REGISTRY_ADDRESS}?tab=logs`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -991,7 +991,7 @@ export default function VerifyPage() {
             </div>
             {bridgeStatus === 'base_verified' && (
               <a
-                href={`https://sepolia.basescan.org/address/${BASE_REGISTRY_ADDRESS}`}
+                href={`https://base-sepolia.blockscout.com/address/${BASE_REGISTRY_ADDRESS}?tab=contract`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ fontSize: '11px', color: '#1976d2' }}

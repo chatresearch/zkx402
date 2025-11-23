@@ -1,0 +1,9 @@
+[submodule "zkx402-demo/contracts/lib/forge-std"]
+	path = zkx402-demo/contracts/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "zkx402-demo/contracts/lib/openzeppelin-contracts"]
+	path = zkx402-demo/contracts/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "zkx402-demo/contracts/lib/hyperlane-monorepo"]
+	path = zkx402-demo/contracts/lib/hyperlane-monorepo
+	url = https://github.com/hyperlane-xyz/hyperlane-monorepo
