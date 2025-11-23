@@ -659,7 +659,7 @@ export const ProducerUpload = () => {
                       Source Type
                     </Label>
                     <div className="grid grid-cols-3 gap-2">
-                      <Button
+                    { /*  <Button
                         type="button"
                         variant={sourceType === 'demo' ? 'default' : 'outline'}
                         onClick={() => {
@@ -674,7 +674,7 @@ export const ProducerUpload = () => {
                         disabled={isProving}
                       >
                         Demo
-                      </Button>
+                      </Button> */ }
                       <Button
                         type="button"
                         variant={

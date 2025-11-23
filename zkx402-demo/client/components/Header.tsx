@@ -46,6 +46,16 @@ export const Header = () => {
           </NavLink>
           
           <nav className="hidden md:flex items-center gap-6">
+          <NavLink
+            to="/demo"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-smooth"
+            activeClassName="text-foreground"
+          >
+            Demonstration
+          </NavLink>
+
             <NavLink 
               to="/producer" 
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-smooth"
