@@ -113,7 +113,7 @@ export const ProducerUpload = () => {
       return trimmed;
     }
 
-    // 2. Full URL with workspace
+    // 2. Full URL with workspace: notion.so/workspace/32hexchars
     const fullUrlMatch = trimmed.match(
       /notion\.so\/[^/]+\/([a-f0-9]{32})(?:\?|$|#)/i
     );
@@ -121,10 +121,20 @@ export const ProducerUpload = () => {
       return fullUrlMatch[1];
     }
 
-    // 3. URL with title
+    // 3. URL with title slug: notion.so/title-slug-32hexchars or notion.so/title-slug-32hexchars?params
+    // This handles cases like: notion.so/zkx402-leak-cat-image-2b47fbfd218080feb49be38fb6aa3ac7
     const titleUrlMatch = trimmed.match(/-([a-f0-9]{32})(?:\?|$|#)/i);
     if (titleUrlMatch && titleUrlMatch[1]) {
       return titleUrlMatch[1];
+    }
+
+    // 3b. Alternative: URL with title but ID at the end of the path (before query params)
+    // notion.so/title-slug-32hexchars?params
+    const titleUrlMatch2 = trimmed.match(
+      /notion\.so\/[^?]+-([a-f0-9]{32})(?:\?|$|#)/i
+    );
+    if (titleUrlMatch2 && titleUrlMatch2[1]) {
+      return titleUrlMatch2[1];
     }
 
     // 4. UUID format with hyphens
@@ -135,10 +145,13 @@ export const ProducerUpload = () => {
       return uuidMatch[1].replace(/-/g, '');
     }
 
-    // 5. Try to find any 32-char hex string
-    const anyHexMatch = trimmed.match(/([a-f0-9]{32})/i);
-    if (anyHexMatch && anyHexMatch[1]) {
-      return anyHexMatch[1];
+    // 5. Try to find any 32-char hex string (fallback - matches the last occurrence)
+    // This is useful for URLs where the ID appears anywhere in the string
+    const hexMatches = trimmed.matchAll(/([a-f0-9]{32})/gi);
+    const matches = Array.from(hexMatches);
+    if (matches.length > 0) {
+      // Return the last match (most likely to be the page ID)
+      return matches[matches.length - 1][1];
     }
 
     return null;
