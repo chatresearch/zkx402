@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Shield, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
@@ -9,6 +10,11 @@ export const Header = () => {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleWalletAction = () => {
     if (isConnected) {
@@ -59,12 +65,12 @@ export const Header = () => {
         
         <div className="flex items-center gap-4">
           <Button 
-            variant={isConnected ? "secondary" : "default"} 
+            variant={mounted && isConnected ? "secondary" : "default"} 
             onClick={handleWalletAction} 
             className="gap-2"
           >
             <Wallet className="w-4 h-4" />
-            {isConnected && address ? formatAddress(address) : "Connect Wallet"}
+            {mounted && isConnected && address ? formatAddress(address) : "Connect Wallet"}
           </Button>
         </div>
       </div>

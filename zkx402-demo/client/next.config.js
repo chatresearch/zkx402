@@ -9,6 +9,7 @@ const nextConfig = {
       tls: false,
       porto: false,
       'porto/internal': false,
+      '@react-native-async-storage/async-storage': false,
     };
 
     config.externals.push('pino-pretty', 'lokijs', 'encoding');
@@ -27,6 +28,7 @@ const nextConfig = {
       ...config.resolve.alias,
       porto: false,
       'porto/internal': false,
+      '@react-native-async-storage/async-storage': false,
     };
 
     return config;
