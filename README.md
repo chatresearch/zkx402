@@ -1,33 +1,19 @@
 # ETHGlobal Buenos Aires 2025 zkx402 - x402 protocol extension
 
-# zkx402 - Proof of Leak
-Verifiable leaks. Anonymous monetization. AI-native access.
-
 ## Summary
 zkx402 is a protocol extension that integrates Zero-Knowledge proofs into x402, enabling verified variable payments and verifiable content metadata.
 
 Consumers (humans or AI agents) gain variable pricing, with eligiblility verified with zkproofs.
-Producers can prove the providence of their content by attaching zkproofs. e.g., confirmed authorship by a specific journalist, proof of human creation, IoT data with GPS/sensor details.
+Producers can prove the providence of their content by attaching zkproofs. e.g. confirmed authorship by a specific journalist, proof of human creation, IoT data with GPS/sensor details.
 
-## First application of zkx402
-
-ProofOfLeak is the first place that utilizes zkx402 extension and lets whistleblowers securely sell sensitive private data to journalists and AI agents with cryptographic guarantees of authenticity, optional identity verification for discounted pricing, and native x402 payments so AI agents can autonomously buy leaks on behalf of their humans.
-
-Whistleblowers get paid without ever revealing their identity.
-Journalists get cheaper access by proving they are human and work for reputable outlets.
-Journalist-controlled AI agents pay autonomously via x402 on Base to access private sensitive data.
-
-We’re SecureDrop + ZK provenance + dynamic pricing + AI agent economy in one protocol.
-
-## Intended users
+## Use Cases
 Being a protocol extension, it's a primitive that has many use cases.
 
-The use case we are most excited about is for making private data commerciable.
-Data owners would set a high price for data they are OK to lose control of. Or make it available at a discount for a verified organisation who they are confident will not abuse the data, such as LLM model creators focused on creating transparent models.
+The use case we are most excited about is for making private data commercializable. Data owners would set a high price for data they are OK to lose control of. However, also make it available at a discount for a verified organisation who they are confident will not abuse the data, such as LLM model creators focused on creating transparent models.
 
-There is also impact use cases, where a deep-cover journalist prices sensitive primary content extremely high for the open market but offers standard rates to employers/partners, who also need to cryptographically confirm the content's authentic origin.
+There is also impact use cases, where a deep-cover journalist sell sensitive primary content extremely high for the open market but offers standard rates to employers/partners, who also need to cryptographically confirm the content's authentic origin. Whistleblowers can get paid without compromising their safety or Journalist-controlled AI agents can pay for verified private sensitive data. It's like SecureDrop + ZK provenance + dynamic pricing + AI agent economy in one protocol.
 
-Then more future looking, is making content purchasable by an growing automomous AI ecosystem who may perform it's tasks better if it had unique verified primary source data.
+Then more future looking, is making content purchasable by an growing automomous AI ecosystem who may perform their tasks better if it had unique verified primary source data.
 
 ## High-level abstract & value proposition
 ![zkx402 new flow](zkx402-protocol-flow-white-background-v3.png)
