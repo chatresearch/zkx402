@@ -54,6 +54,7 @@ export default function VerifyPage() {
   const [checkCount, setCheckCount] = useState(0);
   const [celoTxHash, setCeloTxHash] = useState<string>('');
   const [baseTxHash, setBaseTxHash] = useState<string>('');
+  const [showContinueButton, setShowContinueButton] = useState(false);
 
   // Auth state
   const [loading, setLoading] = useState(false);
@@ -300,17 +301,13 @@ export default function VerifyPage() {
           setBridgeStatus('base_verified');
           setIsVerified(true);
           setVerificationStatus('verified');
+          setShowContinueButton(true);
           clearInterval(interval);
 
           // Store verification status in localStorage
           if (address) {
             localStorage.setItem(`verified_${address}`, 'true');
           }
-
-          // Redirect to consumer page with third modal open after 2 seconds
-          setTimeout(() => {
-            router.push('/consumer?openModal=3');
-          }, 2000);
         } else {
           setBridgeStatus('bridging');
           console.log(
@@ -662,6 +659,39 @@ export default function VerifyPage() {
         fontFamily: 'monospace',
       }}
     >
+      {/* Continue Button - Shown at top when verification is complete */}
+      {showContinueButton && (
+        <div
+          style={{
+            background: '#e8f5e9',
+            padding: '20px',
+            borderRadius: '8px',
+            marginBottom: '30px',
+            border: '2px solid #4caf50',
+            textAlign: 'center',
+          }}
+        >
+          <h3 style={{ margin: '0 0 15px 0', color: '#2e7d32' }}>
+            ✓ verification complete!
+          </h3>
+          <button
+            onClick={() => router.push('/consumer?openModal=3')}
+            style={{
+              padding: '16px 32px',
+              background: '#4caf50',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold',
+            }}
+          >
+            continue to marketplace
+          </button>
+        </div>
+      )}
+
       <div
         style={{
           display: 'flex',

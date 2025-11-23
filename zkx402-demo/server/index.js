@@ -18,8 +18,14 @@ app.use(express.json());
 // wallet address that will receive payments for the API
 const RECEIVER_WALLET = process.env.RECEIVER_WALLET || "0xYourWalletAddress";
 
-// enable CORS for local development
-app.use(cors());
+// enable CORS for local development and production
+const corsOptions = {
+  origin: process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : ['http://localhost:3000', 'http://localhost:3001'],
+  credentials: true,
+};
+app.use(cors(corsOptions));
 
 // apply x402 payment middleware
 app.use(paymentMiddleware(
