@@ -59,6 +59,13 @@ export default function VerifyPage() {
     }
   }, [address]);
 
+  // Show bridge status UI for already verified wallets
+  useEffect(() => {
+    if (isVerified && bridgeStatus === "none") {
+      setBridgeStatus("base_verified");
+    }
+  }, [isVerified]);
+
   // Auto-generate QR code when wallet is connected
   useEffect(() => {
     if (
@@ -75,7 +82,8 @@ export default function VerifyPage() {
     if (!address) return;
 
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      // Use public RPC for read-only operations (no wallet needed)
+      const provider = new ethers.JsonRpcProvider("https://sepolia.base.org");
       const registry = new ethers.Contract(
         BASE_REGISTRY_ADDRESS,
         ['function isVerified(address) view returns (bool)'],
@@ -150,10 +158,9 @@ export default function VerifyPage() {
   };
 
   const startPolling = () => {
-    console.log('Starting polling for verification...');
-    setBridgeStatus('celo_verified');
-
-    // Poll every 10 seconds - checking BASE for bridged verification
+    console.log("Starting polling for verification...");
+    
+    // Poll every 10 seconds - check CELO first, then BASE
     const interval = setInterval(async () => {
       if (!address) return;
 
@@ -161,41 +168,82 @@ export default function VerifyPage() {
       setLastCheckTime(new Date());
       const currentCheck = checkCount + 1;
 
-      console.log(
-        `[Poll ${currentCheck}] Checking Base Registry for bridged verification...`
-      );
-
       try {
-        const { ethers } = await import('ethers');
-        const provider = new ethers.JsonRpcProvider('https://sepolia.base.org');
-
-        const abi = ['function isVerified(address) view returns (bool)'];
-
-        const contract = new ethers.Contract(
-          BASE_REGISTRY_ADDRESS,
-          abi,
-          provider
-        );
-
-        const isVerified = await contract.isVerified(address);
-
-        console.log(`[Poll ${currentCheck}] Base verification status:`, {
-          address: address,
-          isVerified: isVerified,
-        });
-
-        if (isVerified) {
-          console.log('✅ Verification bridged to Base!');
-
-          setBridgeStatus('base_verified');
-          setIsVerified(true);
-          setVerificationStatus('verified');
-          clearInterval(interval);
-        } else {
-          setBridgeStatus('bridging');
-          console.log(
-            '⏳ Waiting for Hyperlane to bridge message (2-5 min)...'
+        const { ethers } = await import("ethers");
+        
+        // STEP 1: Check Celo for verification (if not yet verified on Celo)
+        if (bridgeStatus === "none") {
+          console.log(`[Poll ${currentCheck}] Checking Celo contract...`);
+          
+          const celoProvider = new ethers.JsonRpcProvider(
+            "https://alfajores-forno.celo-testnet.org"
           );
+          
+          const celoAbi = [
+            "function verificationSuccessful() view returns (bool)",
+            "function lastUserAddress() view returns (address)",
+          ];
+          
+          const celoContract = new ethers.Contract(
+            CELO_BRIDGE_ADDRESS,
+            celoAbi,
+            celoProvider
+          );
+          
+          const isSuccessful = await celoContract.verificationSuccessful();
+          const lastUser = await celoContract.lastUserAddress();
+          
+          console.log(`[Poll ${currentCheck}] Celo verification:`, {
+            verificationSuccessful: isSuccessful,
+            lastUserAddress: lastUser,
+            matchesOurWallet: lastUser.toLowerCase() === address.toLowerCase(),
+          });
+          
+          if (isSuccessful && lastUser.toLowerCase() === address.toLowerCase()) {
+            console.log("✅ Verified on Celo!");
+            setBridgeStatus("celo_verified");
+          } else {
+            console.log("⏳ Waiting for Celo verification...");
+            return; // Don't check Base yet
+          }
+        }
+        
+        // STEP 2: Check Base for bridged verification (if verified on Celo)
+        if (bridgeStatus === "celo_verified" || bridgeStatus === "bridging") {
+          console.log(`[Poll ${currentCheck}] Checking Base Registry for bridged verification...`);
+
+          const baseProvider = new ethers.JsonRpcProvider(
+            "https://sepolia.base.org"
+          );
+
+          const baseAbi = [
+            "function isVerified(address) view returns (bool)",
+          ];
+
+          const baseContract = new ethers.Contract(
+            BASE_REGISTRY_ADDRESS,
+            baseAbi,
+            baseProvider
+          );
+
+          const isVerified = await baseContract.isVerified(address);
+
+          console.log(`[Poll ${currentCheck}] Base verification status:`, {
+            address: address,
+            isVerified: isVerified,
+          });
+
+          if (isVerified) {
+            console.log("✅ Verification bridged to Base!");
+            
+            setBridgeStatus("base_verified");
+            setIsVerified(true);
+            setVerificationStatus("verified");
+            clearInterval(interval);
+          } else {
+            setBridgeStatus("bridging");
+            console.log("⏳ Waiting for Hyperlane to bridge message (2-5 min)...");
+          }
         }
       } catch (err) {
         console.error(`[Poll ${currentCheck}] Polling error:`, err);
@@ -274,33 +322,12 @@ export default function VerifyPage() {
         </p>
       </div>
 
-      {/* Verification Status */}
+      {/* Verification Status - Simple message at top */}
       {isVerified && (
-        <div
-          style={{
-            background: '#e8f5e9',
-            padding: '20px',
-            borderRadius: '8px',
-            marginBottom: '20px',
-            border: '2px solid #4caf50',
-          }}
-        >
-          <h3 style={{ margin: '0 0 10px 0', color: '#2e7d32' }}>
-            ✓ verified human
-          </h3>
-          <p style={{ margin: 0, fontSize: '14px' }}>
-            your wallet is verified on base sepolia
-          </p>
-          <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#666' }}>
-            contract:{' '}
-            <a
-              href={`https://sepolia.basescan.org/address/${BASE_REGISTRY_ADDRESS}#readContract`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: '#1976d2', fontFamily: 'monospace' }}
-            >
-              {BASE_REGISTRY_ADDRESS}
-            </a>
+        <div style={{ background: "#e8f5e9", padding: "20px", borderRadius: "8px", marginBottom: "20px", border: "2px solid #4caf50" }}>
+          <h3 style={{ margin: "0 0 10px 0", color: "#2e7d32" }}>✓ verified human</h3>
+          <p style={{ margin: 0, fontSize: "14px" }}>
+            your wallet has completed proof of human verification
           </p>
           <Link
             href="/"
