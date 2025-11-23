@@ -1,51 +1,72 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useMemo } from "react";
-import { useCurrentUser, useIsSignedIn } from "@coinbase/cdp-hooks";
-import { SelfAppBuilder, SelfQRcodeWrapper, countries, type SelfApp } from "@selfxyz/qrcode";
-import { ethers } from "ethers";
-import Link from "next/link";
+import { useState, useEffect, useMemo } from 'react';
+import { useCurrentUser, useIsSignedIn } from '@coinbase/cdp-hooks';
+import {
+  SelfAppBuilder,
+  SelfQRcodeWrapper,
+  countries,
+  type SelfApp,
+} from '@selfxyz/qrcode';
+import { ethers } from 'ethers';
+import Link from 'next/link';
 
 // Contract addresses (you'll update these after deployment)
-const CELO_BRIDGE_ADDRESS = process.env.NEXT_PUBLIC_CELO_BRIDGE_ADDRESS || "0x0000000000000000000000000000000000000000";
-const BASE_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_BASE_REGISTRY_ADDRESS || "0x0000000000000000000000000000000000000000";
+const CELO_BRIDGE_ADDRESS =
+  process.env.NEXT_PUBLIC_CELO_BRIDGE_ADDRESS ||
+  '0x0000000000000000000000000000000000000000';
+const BASE_REGISTRY_ADDRESS =
+  process.env.NEXT_PUBLIC_BASE_REGISTRY_ADDRESS ||
+  '0x0000000000000000000000000000000000000000';
 
 export default function VerifyPage() {
   const { currentUser } = useCurrentUser();
   const { isSignedIn } = useIsSignedIn();
   const [selfApp, setSelfApp] = useState<SelfApp | null>(null);
   const [showQR, setShowQR] = useState(false);
-  const [error, setError] = useState<string>("");
-  const [verificationStatus, setVerificationStatus] = useState<"idle" | "pending" | "verified">("idle");
+  const [error, setError] = useState<string>('');
+  const [verificationStatus, setVerificationStatus] = useState<
+    'idle' | 'pending' | 'verified'
+  >('idle');
   const [isVerified, setIsVerified] = useState(false);
-  const [bridgeStatus, setBridgeStatus] = useState<"none" | "celo_verified" | "bridging" | "base_verified">("none");
+  const [bridgeStatus, setBridgeStatus] = useState<
+    'none' | 'celo_verified' | 'bridging' | 'base_verified'
+  >('none');
   const [lastCheckTime, setLastCheckTime] = useState<Date | null>(null);
   const [checkCount, setCheckCount] = useState(0);
-  const [celoTxHash, setCeloTxHash] = useState<string>("");
-  const [baseTxHash, setBaseTxHash] = useState<string>("");
+  const [celoTxHash, setCeloTxHash] = useState<string>('');
+  const [baseTxHash, setBaseTxHash] = useState<string>('');
 
   const address = currentUser?.evmAccounts?.[0];
   const excludedCountries = useMemo(() => [], []); // No exclusions
 
   // Debug logging
   useEffect(() => {
-    console.log("=== CDP Wallet State ===");
-    console.log("isSignedIn:", isSignedIn);
-    console.log("currentUser:", currentUser);
-    console.log("evmAccounts:", currentUser?.evmAccounts);
-    console.log("address:", address);
+    console.log('=== CDP Wallet State ===');
+    console.log('isSignedIn:', isSignedIn);
+    console.log('currentUser:', currentUser);
+    console.log('evmAccounts:', currentUser?.evmAccounts);
+    console.log('address:', address);
   }, [isSignedIn, currentUser, address]);
 
   // Check if already verified on Base
   useEffect(() => {
-    if (address && BASE_REGISTRY_ADDRESS !== "0x0000000000000000000000000000000000000000") {
+    if (
+      address &&
+      BASE_REGISTRY_ADDRESS !== '0x0000000000000000000000000000000000000000'
+    ) {
       checkVerificationStatus();
     }
   }, [address]);
 
   // Auto-generate QR code when wallet is connected
   useEffect(() => {
-    if (address && !selfApp && !isVerified && CELO_BRIDGE_ADDRESS !== "0x0000000000000000000000000000000000000000") {
+    if (
+      address &&
+      !selfApp &&
+      !isVerified &&
+      CELO_BRIDGE_ADDRESS !== '0x0000000000000000000000000000000000000000'
+    ) {
       generateQRCode();
     }
   }, [address, selfApp, isVerified]);
@@ -54,52 +75,52 @@ export default function VerifyPage() {
     if (!address) return;
 
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
       const registry = new ethers.Contract(
         BASE_REGISTRY_ADDRESS,
-        ["function isVerified(address) view returns (bool)"],
+        ['function isVerified(address) view returns (bool)'],
         provider
       );
 
       const verified = await registry.isVerified(address);
       setIsVerified(verified);
       if (verified) {
-        setVerificationStatus("verified");
+        setVerificationStatus('verified');
       }
     } catch (err) {
-      console.error("Error checking verification:", err);
+      console.error('Error checking verification:', err);
     }
   };
 
   const generateQRCode = async () => {
     if (!address) {
-      setError("Please connect your wallet first");
+      setError('Please connect your wallet first');
       return;
     }
 
-    if (CELO_BRIDGE_ADDRESS === "0x0000000000000000000000000000000000000000") {
-      setError("Contract not deployed yet. Deploy contracts first!");
+    if (CELO_BRIDGE_ADDRESS === '0x0000000000000000000000000000000000000000') {
+      setError('Contract not deployed yet. Deploy contracts first!');
       return;
     }
 
-    setError("");
+    setError('');
 
     try {
       // Build Self QR code using workaround for cross-chain detection
       // Use ZeroAddress as userId (neutral, no chain association)
       // Pass real CDP wallet in userDefinedData
       const { ethers } = await import('ethers');
-      
+
       const app = new SelfAppBuilder({
         version: 2,
-        appName: "CDP Agent Verification",
-        scope: "zkx402", // MUST match contract deployment scope
+        appName: 'CDP Agent Verification',
+        scope: 'zkx402', // MUST match contract deployment scope
         endpoint: CELO_BRIDGE_ADDRESS.toLowerCase(), // MUST be lowercase!
-        logoBase64: "https://i.postimg.cc/mrmVf9hm/self.png",
+        logoBase64: 'https://i.postimg.cc/mrmVf9hm/self.png',
         userId: address.toLowerCase(), // Real CDP wallet address!
-        endpointType: "staging_celo", // Testnet on Celo
-        userIdType: "hex", // Ethereum address format
-        userDefinedData: "CDP Agent Verification", // Just text
+        endpointType: 'staging_celo', // Testnet on Celo
+        userIdType: 'hex', // Ethereum address format
+        userDefinedData: 'CDP Agent Verification', // Just text
 
         disclosures: {
           // These must match your contract configuration
@@ -107,62 +128,48 @@ export default function VerifyPage() {
           excludedCountries: excludedCountries, // No exclusions
           nationality: true, // Request nationality for display
         },
-        
-        // Success callback - called when verification completes
-        onSuccess: (proof: any) => {
-          console.log("✅ Self verification successful!", proof);
-          setVerificationStatus("verified");
-        },
-        
-        // Error callback
-        onError: (error: any) => {
-          console.error("❌ Self verification failed:", error);
-          setError(`Verification failed: ${error.message || 'Unknown error'}`);
-        },
-      }).build();
+      } as any).build();
 
-      console.log("=== QR Code Generated ===");
-      console.log("Contract Address:", CELO_BRIDGE_ADDRESS);
-      console.log("Scope:", "zkx402");
-      console.log("User ID (CDP Wallet):", address);
-      console.log("Endpoint Type:", "staging_celo");
-      console.log("Self App Object:", app);
-      
+      console.log('=== QR Code Generated ===');
+      console.log('Contract Address:', CELO_BRIDGE_ADDRESS);
+      console.log('Scope:', 'zkx402');
+      console.log('User ID (CDP Wallet):', address);
+      console.log('Endpoint Type:', 'staging_celo');
+      console.log('Self App Object:', app);
+
       setSelfApp(app);
       setShowQR(true);
-      setVerificationStatus("pending");
+      setVerificationStatus('pending');
 
       // Start polling for verification
       startPolling();
     } catch (err) {
-      console.error("Error generating QR code:", err);
-      setError("Failed to generate QR code. Check console for details.");
+      console.error('Error generating QR code:', err);
+      setError('Failed to generate QR code. Check console for details.');
     }
   };
 
   const startPolling = () => {
-    console.log("Starting polling for verification...");
-    setBridgeStatus("celo_verified");
-    
+    console.log('Starting polling for verification...');
+    setBridgeStatus('celo_verified');
+
     // Poll every 10 seconds - checking BASE for bridged verification
     const interval = setInterval(async () => {
       if (!address) return;
 
-      setCheckCount(prev => prev + 1);
+      setCheckCount((prev) => prev + 1);
       setLastCheckTime(new Date());
       const currentCheck = checkCount + 1;
-      
-      console.log(`[Poll ${currentCheck}] Checking Base Registry for bridged verification...`);
+
+      console.log(
+        `[Poll ${currentCheck}] Checking Base Registry for bridged verification...`
+      );
 
       try {
-        const { ethers } = await import("ethers");
-        const provider = new ethers.JsonRpcProvider(
-          "https://sepolia.base.org"
-        );
+        const { ethers } = await import('ethers');
+        const provider = new ethers.JsonRpcProvider('https://sepolia.base.org');
 
-        const abi = [
-          "function isVerified(address) view returns (bool)",
-        ];
+        const abi = ['function isVerified(address) view returns (bool)'];
 
         const contract = new ethers.Contract(
           BASE_REGISTRY_ADDRESS,
@@ -178,15 +185,17 @@ export default function VerifyPage() {
         });
 
         if (isVerified) {
-          console.log("✅ Verification bridged to Base!");
-          
-          setBridgeStatus("base_verified");
+          console.log('✅ Verification bridged to Base!');
+
+          setBridgeStatus('base_verified');
           setIsVerified(true);
-          setVerificationStatus("verified");
+          setVerificationStatus('verified');
           clearInterval(interval);
         } else {
-          setBridgeStatus("bridging");
-          console.log("⏳ Waiting for Hyperlane to bridge message (2-5 min)...");
+          setBridgeStatus('bridging');
+          console.log(
+            '⏳ Waiting for Hyperlane to bridge message (2-5 min)...'
+          );
         }
       } catch (err) {
         console.error(`[Poll ${currentCheck}] Polling error:`, err);
@@ -196,19 +205,25 @@ export default function VerifyPage() {
     // Stop polling after 15 minutes (Hyperlane should be done by then)
     setTimeout(() => {
       clearInterval(interval);
-      if (bridgeStatus !== "base_verified") {
-        console.log("❌ Polling timeout - message may have failed to bridge");
-        setBridgeStatus("celo_verified"); // Reset to show it's still on Celo
+      if (bridgeStatus !== 'base_verified') {
+        console.log('❌ Polling timeout - message may have failed to bridge');
+        setBridgeStatus('celo_verified'); // Reset to show it's still on Celo
       }
     }, 900000);
   };
 
   if (!isSignedIn) {
     return (
-      <div style={{ padding: "40px", textAlign: "center", fontFamily: "monospace" }}>
+      <div
+        style={{
+          padding: '40px',
+          textAlign: 'center',
+          fontFamily: 'monospace',
+        }}
+      >
         <h1>verify human</h1>
         <p>connect your wallet first</p>
-        <Link href="/" style={{ color: "#0052ff" }}>
+        <Link href="/" style={{ color: '#0052ff' }}>
           ← back to home
         </Link>
       </div>
@@ -216,28 +231,85 @@ export default function VerifyPage() {
   }
 
   return (
-    <div style={{ padding: "40px", maxWidth: "600px", margin: "0 auto", fontFamily: "monospace" }}>
+    <div
+      style={{
+        padding: '40px',
+        maxWidth: '600px',
+        margin: '0 auto',
+        fontFamily: 'monospace',
+      }}
+    >
       <h1>verify as human</h1>
 
       {/* Wallet Info */}
-      <div style={{ background: "#e3f2fd", padding: "20px", borderRadius: "8px", marginBottom: "20px", border: "1px solid #2196f3" }}>
-        <p style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#1976d2", fontWeight: "bold" }}>your cdp wallet:</p>
-        <p style={{ margin: 0, fontFamily: "monospace", fontSize: "13px", wordBreak: "break-all", color: "#0d47a1" }}>
-          {address || "Loading..."}
+      <div
+        style={{
+          background: '#e3f2fd',
+          padding: '20px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          border: '1px solid #2196f3',
+        }}
+      >
+        <p
+          style={{
+            margin: '0 0 10px 0',
+            fontSize: '14px',
+            color: '#1976d2',
+            fontWeight: 'bold',
+          }}
+        >
+          your cdp wallet:
+        </p>
+        <p
+          style={{
+            margin: 0,
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            wordBreak: 'break-all',
+            color: '#0d47a1',
+          }}
+        >
+          {address || 'Loading...'}
         </p>
       </div>
 
       {/* Verification Status */}
       {isVerified && (
-        <div style={{ background: "#e8f5e9", padding: "20px", borderRadius: "8px", marginBottom: "20px", border: "2px solid #4caf50" }}>
-          <h3 style={{ margin: "0 0 10px 0", color: "#2e7d32" }}>✓ verified human</h3>
-          <p style={{ margin: 0, fontSize: "14px" }}>
+        <div
+          style={{
+            background: '#e8f5e9',
+            padding: '20px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            border: '2px solid #4caf50',
+          }}
+        >
+          <h3 style={{ margin: '0 0 10px 0', color: '#2e7d32' }}>
+            ✓ verified human
+          </h3>
+          <p style={{ margin: 0, fontSize: '14px' }}>
             your wallet is verified on base sepolia
           </p>
-          <p style={{ margin: "10px 0 0 0", fontSize: "12px", color: "#666" }}>
-            contract: <a href={`https://sepolia.basescan.org/address/${BASE_REGISTRY_ADDRESS}#readContract`} target="_blank" rel="noopener noreferrer" style={{ color: "#1976d2", fontFamily: "monospace" }}>{BASE_REGISTRY_ADDRESS}</a>
+          <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#666' }}>
+            contract:{' '}
+            <a
+              href={`https://sepolia.basescan.org/address/${BASE_REGISTRY_ADDRESS}#readContract`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#1976d2', fontFamily: 'monospace' }}
+            >
+              {BASE_REGISTRY_ADDRESS}
+            </a>
           </p>
-          <Link href="/" style={{ color: "#2e7d32", marginTop: "10px", display: "inline-block" }}>
+          <Link
+            href="/"
+            style={{
+              color: '#2e7d32',
+              marginTop: '10px',
+              display: 'inline-block',
+            }}
+          >
             ← back to home
           </Link>
         </div>
@@ -245,74 +317,171 @@ export default function VerifyPage() {
 
       {/* Manual Verification Check */}
       {!isVerified && (
-        <div style={{ background: "#f5f5f5", padding: "20px", borderRadius: "8px", marginBottom: "20px", border: "1px solid #ddd" }}>
-          <h3 style={{ margin: "0 0 10px 0", color: "#333" }}>check verification status</h3>
-          <p style={{ margin: "0 0 15px 0", fontSize: "14px", color: "#666" }}>
+        <div
+          style={{
+            background: '#f5f5f5',
+            padding: '20px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            border: '1px solid #ddd',
+          }}
+        >
+          <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>
+            check verification status
+          </h3>
+          <p style={{ margin: '0 0 15px 0', fontSize: '14px', color: '#666' }}>
             check if your wallet is already verified on base
           </p>
           <button
             onClick={checkVerificationStatus}
             style={{
-              padding: "12px 24px",
-              background: "#2196f3",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: "bold",
+              padding: '12px 24px',
+              background: '#2196f3',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 'bold',
             }}
           >
             check now
           </button>
-          <p style={{ margin: "15px 0 0 0", fontSize: "12px", color: "#666" }}>
-            queries: <a href={`https://sepolia.basescan.org/address/${BASE_REGISTRY_ADDRESS}#readContract`} target="_blank" rel="noopener noreferrer" style={{ color: "#1976d2", fontFamily: "monospace" }}>{BASE_REGISTRY_ADDRESS}</a>
+          <p style={{ margin: '15px 0 0 0', fontSize: '12px', color: '#666' }}>
+            queries:{' '}
+            <a
+              href={`https://sepolia.basescan.org/address/${BASE_REGISTRY_ADDRESS}#readContract`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#1976d2', fontFamily: 'monospace' }}
+            >
+              {BASE_REGISTRY_ADDRESS}
+            </a>
           </p>
         </div>
       )}
 
       {/* Bridge Status Tracker */}
-      {bridgeStatus !== "none" && (
-        <div style={{ background: "#fff9e6", padding: "20px", borderRadius: "8px", marginBottom: "20px", border: "2px solid #ffc107" }}>
-          <h3 style={{ margin: "0 0 15px 0", color: "#f57c00" }}>🌉 cross-chain bridging status</h3>
-          
+      {bridgeStatus !== 'none' && (
+        <div
+          style={{
+            background: '#fff9e6',
+            padding: '20px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            border: '2px solid #ffc107',
+          }}
+        >
+          <h3 style={{ margin: '0 0 15px 0', color: '#f57c00' }}>
+            🌉 cross-chain bridging status
+          </h3>
+
           {/* Step 1: Celo Verification */}
-          <div style={{ marginBottom: "15px", paddingLeft: "10px", borderLeft: bridgeStatus === "celo_verified" || bridgeStatus === "bridging" || bridgeStatus === "base_verified" ? "3px solid #4caf50" : "3px solid #ccc" }}>
-            <div style={{ fontWeight: "bold", color: bridgeStatus === "celo_verified" || bridgeStatus === "bridging" || bridgeStatus === "base_verified" ? "#2e7d32" : "#666" }}>
+          <div
+            style={{
+              marginBottom: '15px',
+              paddingLeft: '10px',
+              borderLeft:
+                bridgeStatus === 'celo_verified' ||
+                bridgeStatus === 'bridging' ||
+                bridgeStatus === 'base_verified'
+                  ? '3px solid #4caf50'
+                  : '3px solid #ccc',
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 'bold',
+                color:
+                  bridgeStatus === 'celo_verified' ||
+                  bridgeStatus === 'bridging' ||
+                  bridgeStatus === 'base_verified'
+                    ? '#2e7d32'
+                    : '#666',
+              }}
+            >
               ✓ verified on celo sepolia
             </div>
-            <div style={{ fontSize: "12px", color: "#666", marginTop: "5px" }}>
+            <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
               self protocol verification complete
             </div>
-            <a href={`https://sepolia.celoscan.io/address/${CELO_BRIDGE_ADDRESS}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "11px", color: "#1976d2" }}>
+            <a
+              href={`https://sepolia.celoscan.io/address/${CELO_BRIDGE_ADDRESS}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: '11px', color: '#1976d2' }}
+            >
               view contract →
             </a>
           </div>
 
           {/* Step 2: Hyperlane Bridging */}
-          <div style={{ marginBottom: "15px", paddingLeft: "10px", borderLeft: bridgeStatus === "base_verified" ? "3px solid #4caf50" : bridgeStatus === "bridging" ? "3px solid #ff9800" : "3px solid #ccc" }}>
-            <div style={{ fontWeight: "bold", color: bridgeStatus === "base_verified" ? "#2e7d32" : bridgeStatus === "bridging" ? "#e65100" : "#666" }}>
-              {bridgeStatus === "bridging" ? "⏳ bridging via hyperlane..." : bridgeStatus === "base_verified" ? "✓ bridged successfully" : "⏸ waiting to bridge"}
+          <div
+            style={{
+              marginBottom: '15px',
+              paddingLeft: '10px',
+              borderLeft:
+                bridgeStatus === 'base_verified'
+                  ? '3px solid #4caf50'
+                  : bridgeStatus === 'bridging'
+                  ? '3px solid #ff9800'
+                  : '3px solid #ccc',
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 'bold',
+                color:
+                  bridgeStatus === 'base_verified'
+                    ? '#2e7d32'
+                    : bridgeStatus === 'bridging'
+                    ? '#e65100'
+                    : '#666',
+              }}
+            >
+              {bridgeStatus === 'bridging'
+                ? '⏳ bridging via hyperlane...'
+                : bridgeStatus === 'base_verified'
+                ? '✓ bridged successfully'
+                : '⏸ waiting to bridge'}
             </div>
-            <div style={{ fontSize: "12px", color: "#666", marginTop: "5px" }}>
-              {bridgeStatus === "bridging" ? `checking... (attempt ${checkCount})` : bridgeStatus === "base_verified" ? "message delivered" : "pending verification"}
+            <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+              {bridgeStatus === 'bridging'
+                ? `checking... (attempt ${checkCount})`
+                : bridgeStatus === 'base_verified'
+                ? 'message delivered'
+                : 'pending verification'}
             </div>
             {lastCheckTime && (
-              <div style={{ fontSize: "11px", color: "#999", marginTop: "3px" }}>
+              <div
+                style={{ fontSize: '11px', color: '#999', marginTop: '3px' }}
+              >
                 last checked: {lastCheckTime.toLocaleTimeString()}
               </div>
             )}
-            {bridgeStatus === "bridging" && (
-              <div style={{ fontSize: "11px", color: "#666", marginTop: "5px", fontStyle: "italic" }}>
+            {bridgeStatus === 'bridging' && (
+              <div
+                style={{
+                  fontSize: '11px',
+                  color: '#666',
+                  marginTop: '5px',
+                  fontStyle: 'italic',
+                }}
+              >
                 hyperlane typically takes 2-5 minutes
               </div>
             )}
-            {bridgeStatus === "base_verified" && address && (
-              <a 
-                href={`https://sepolia.basescan.org/address/${BASE_REGISTRY_ADDRESS}#events`} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                style={{ fontSize: "11px", color: "#1976d2", marginTop: "5px", display: "inline-block" }}
+            {bridgeStatus === 'base_verified' && address && (
+              <a
+                href={`https://sepolia.basescan.org/address/${BASE_REGISTRY_ADDRESS}#events`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: '11px',
+                  color: '#1976d2',
+                  marginTop: '5px',
+                  display: 'inline-block',
+                }}
               >
                 view bridge events →
               </a>
@@ -320,15 +489,37 @@ export default function VerifyPage() {
           </div>
 
           {/* Step 3: Base Verification */}
-          <div style={{ paddingLeft: "10px", borderLeft: bridgeStatus === "base_verified" ? "3px solid #4caf50" : "3px solid #ccc" }}>
-            <div style={{ fontWeight: "bold", color: bridgeStatus === "base_verified" ? "#2e7d32" : "#666" }}>
-              {bridgeStatus === "base_verified" ? "✓ verified on base sepolia" : "⏸ waiting for base"}
+          <div
+            style={{
+              paddingLeft: '10px',
+              borderLeft:
+                bridgeStatus === 'base_verified'
+                  ? '3px solid #4caf50'
+                  : '3px solid #ccc',
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 'bold',
+                color: bridgeStatus === 'base_verified' ? '#2e7d32' : '#666',
+              }}
+            >
+              {bridgeStatus === 'base_verified'
+                ? '✓ verified on base sepolia'
+                : '⏸ waiting for base'}
             </div>
-            <div style={{ fontSize: "12px", color: "#666", marginTop: "5px" }}>
-              {bridgeStatus === "base_verified" ? "proof of human confirmed!" : "checking every 10 seconds"}
+            <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+              {bridgeStatus === 'base_verified'
+                ? 'proof of human confirmed!'
+                : 'checking every 10 seconds'}
             </div>
-            {bridgeStatus === "base_verified" && (
-              <a href={`https://sepolia.basescan.org/address/${BASE_REGISTRY_ADDRESS}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: "11px", color: "#1976d2" }}>
+            {bridgeStatus === 'base_verified' && (
+              <a
+                href={`https://sepolia.basescan.org/address/${BASE_REGISTRY_ADDRESS}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: '11px', color: '#1976d2' }}
+              >
                 view contract →
               </a>
             )}
@@ -339,40 +530,87 @@ export default function VerifyPage() {
       {!isVerified && (
         <>
           {/* Instructions */}
-          <div style={{ marginBottom: "30px" }}>
+          <div style={{ marginBottom: '30px' }}>
             <h3>how it works:</h3>
-            <ol style={{ lineHeight: "1.8" }}>
+            <ol style={{ lineHeight: '1.8' }}>
               <li>QR code generated automatically below</li>
               <li>open self app on your phone</li>
               <li>scan the qr code</li>
-              <li>complete verification with mock passport (age 41+, any country)</li>
+              <li>
+                complete verification with mock passport (age 41+, any country)
+              </li>
               <li>wait 2-5 minutes for hyperlane to bridge to base</li>
             </ol>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div style={{ background: "#ffebee", padding: "15px", borderRadius: "8px", marginBottom: "20px", color: "#c62828" }}>
+            <div
+              style={{
+                background: '#ffebee',
+                padding: '15px',
+                borderRadius: '8px',
+                marginBottom: '20px',
+                color: '#c62828',
+              }}
+            >
               {error}
             </div>
           )}
 
           {/* QR Code - Auto-generated */}
           {showQR && selfApp && (
-            <div style={{ textAlign: "center", marginTop: "30px" }}>
+            <div style={{ textAlign: 'center', marginTop: '30px' }}>
               <h3>scan with self app</h3>
-              <div style={{ background: "white", padding: "20px", borderRadius: "12px", display: "inline-block", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-                <SelfQRcodeWrapper selfApp={selfApp} />
+              <div
+                style={{
+                  background: 'white',
+                  padding: '20px',
+                  borderRadius: '12px',
+                  display: 'inline-block',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                }}
+              >
+                <SelfQRcodeWrapper
+                  selfApp={selfApp}
+                  onSuccess={() => {
+                    console.log('✅ Self verification successful!');
+                    setVerificationStatus('verified');
+                  }}
+                  onError={() => {
+                    console.error('❌ Self verification failed');
+                    setError(`Verification failed`);
+                  }}
+                />
               </div>
 
               {/* Status Messages */}
-              {verificationStatus === "pending" && (
-                <div style={{ marginTop: "20px", background: "#fff3cd", padding: "15px", borderRadius: "8px", border: "1px solid #ff9800" }}>
-                  <p style={{ margin: "0 0 10px 0", fontWeight: "bold", color: "#f57c00" }}>⏳ waiting for verification...</p>
-                  <p style={{ margin: 0, fontSize: "14px", color: "#e65100" }}>
-                    1. scan qr with self app<br />
-                    2. complete verification<br />
-                    3. wait for hyperlane (2-5 min)<br />
+              {verificationStatus === 'pending' && (
+                <div
+                  style={{
+                    marginTop: '20px',
+                    background: '#fff3cd',
+                    padding: '15px',
+                    borderRadius: '8px',
+                    border: '1px solid #ff9800',
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: '0 0 10px 0',
+                      fontWeight: 'bold',
+                      color: '#f57c00',
+                    }}
+                  >
+                    ⏳ waiting for verification...
+                  </p>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#e65100' }}>
+                    1. scan qr with self app
+                    <br />
+                    2. complete verification
+                    <br />
+                    3. wait for hyperlane (2-5 min)
+                    <br />
                     4. page will update automatically
                   </p>
                 </div>
@@ -381,13 +619,13 @@ export default function VerifyPage() {
               <button
                 onClick={generateQRCode}
                 style={{
-                  marginTop: "20px",
-                  padding: "10px 20px",
-                  background: "white",
-                  border: "1px solid #ddd",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontFamily: "monospace",
+                  marginTop: '20px',
+                  padding: '10px 20px',
+                  background: 'white',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'monospace',
                 }}
               >
                 regenerate qr code
@@ -398,21 +636,35 @@ export default function VerifyPage() {
       )}
 
       {/* Info Box */}
-      <div style={{ marginTop: "40px", padding: "20px", background: "#f5f5f5", borderRadius: "8px", fontSize: "14px" }}>
-        <h4 style={{ margin: "0 0 10px 0", color: "#333" }}>requirements:</h4>
-        <ul style={{ margin: 0, paddingLeft: "20px", lineHeight: "1.8", color: "#333" }}>
+      <div
+        style={{
+          marginTop: '40px',
+          padding: '20px',
+          background: '#f5f5f5',
+          borderRadius: '8px',
+          fontSize: '14px',
+        }}
+      >
+        <h4 style={{ margin: '0 0 10px 0', color: '#333' }}>requirements:</h4>
+        <ul
+          style={{
+            margin: 0,
+            paddingLeft: '20px',
+            lineHeight: '1.8',
+            color: '#333',
+          }}
+        >
           <li>age: 21+</li>
           <li>excluded countries: none (all allowed!)</li>
           <li>self app with mock passport</li>
         </ul>
       </div>
 
-      <div style={{ marginTop: "20px", textAlign: "center" }}>
-        <Link href="/" style={{ color: "#0052ff" }}>
+      <div style={{ marginTop: '20px', textAlign: 'center' }}>
+        <Link href="/" style={{ color: '#0052ff' }}>
           ← back to home
         </Link>
       </div>
     </div>
   );
 }
-

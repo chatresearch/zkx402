@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import {
   Upload,
@@ -96,12 +98,11 @@ export const ProducerUpload = () => {
   const [notionPageUrl, setNotionPageUrl] = useState('');
   const { toast } = useToast();
 
-  // API base URL - use production by default, fallback to local in development
-  const API_BASE_URL =
-    import.meta.env.VITE_API_URL || 'https://zkx402-server.vercel.app';
+  // API base URL - production server
+  const API_BASE_URL = 'https://zkx402-server.vercel.app';
 
-  // For local testing, you can use: http://localhost:3001
-  // Set VITE_API_URL=http://localhost:3001 in .env.local
+  // For local testing, create a .env.local file with:
+  // NEXT_PUBLIC_API_URL=http://localhost:3001
 
   // Extract Notion page ID from URL
   const extractNotionPageId = (url: string): string | null => {

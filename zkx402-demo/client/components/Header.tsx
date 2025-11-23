@@ -1,3 +1,5 @@
+"use client";
+
 import { Shield, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
