@@ -1,7 +1,16 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useCurrentUser, useIsSignedIn } from '@coinbase/cdp-hooks';
+import {
+  useCurrentUser,
+  useIsSignedIn,
+  useSignInWithEmail,
+  useVerifyEmailOTP,
+  useSignInWithSms,
+  useVerifySmsOTP,
+  useSignInWithOAuth,
+  useSignOut,
+} from '@coinbase/cdp-hooks';
 import {
   SelfAppBuilder,
   SelfQRcodeWrapper,
@@ -10,6 +19,7 @@ import {
 } from '@selfxyz/qrcode';
 import { ethers } from 'ethers';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 // Contract addresses (you'll update these after deployment)
 const CELO_BRIDGE_ADDRESS =
@@ -20,8 +30,16 @@ const BASE_REGISTRY_ADDRESS =
   '0x0000000000000000000000000000000000000000';
 
 export default function VerifyPage() {
+  const router = useRouter();
   const { currentUser } = useCurrentUser();
   const { isSignedIn } = useIsSignedIn();
+  const { signInWithEmail } = useSignInWithEmail();
+  const { verifyEmailOTP } = useVerifyEmailOTP();
+  const { signInWithSms } = useSignInWithSms();
+  const { verifySmsOTP } = useVerifySmsOTP();
+  const { signInWithOAuth } = useSignInWithOAuth();
+  const { signOut } = useSignOut();
+
   const [selfApp, setSelfApp] = useState<SelfApp | null>(null);
   const [showQR, setShowQR] = useState(false);
   const [error, setError] = useState<string>('');
@@ -36,6 +54,17 @@ export default function VerifyPage() {
   const [checkCount, setCheckCount] = useState(0);
   const [celoTxHash, setCeloTxHash] = useState<string>('');
   const [baseTxHash, setBaseTxHash] = useState<string>('');
+
+  // Auth state
+  const [loading, setLoading] = useState(false);
+  const [showAuthMethods, setShowAuthMethods] = useState(false);
+  const [authStep, setAuthStep] = useState<'method' | 'email' | 'sms' | 'otp'>(
+    'method'
+  );
+  const [emailOrPhone, setEmailOrPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [flowId, setFlowId] = useState('');
+  const [authType, setAuthType] = useState<'email' | 'sms'>('email');
 
   const address = currentUser?.evmAccounts?.[0];
   const excludedCountries = useMemo(() => [], []); // No exclusions
@@ -71,6 +100,85 @@ export default function VerifyPage() {
     }
   }, [address, selfApp, isVerified]);
 
+  // Auth handlers
+  const handleEmailSignIn = async () => {
+    if (!emailOrPhone) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await signInWithEmail({ email: emailOrPhone });
+      setFlowId(result.flowId);
+      setAuthType('email');
+      setAuthStep('otp');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'failed to send email');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSmsSignIn = async () => {
+    if (!emailOrPhone) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await signInWithSms({ phoneNumber: emailOrPhone });
+      setFlowId(result.flowId);
+      setAuthType('sms');
+      setAuthStep('otp');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'failed to send SMS');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp || !flowId) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      if (authType === 'email') {
+        await verifyEmailOTP({ flowId, otp });
+      } else {
+        await verifySmsOTP({ flowId, otp });
+      }
+      setShowAuthMethods(false);
+      setAuthStep('method');
+      setEmailOrPhone('');
+      setOtp('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'failed to verify OTP');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOAuthSignIn = async (provider: 'google' | 'x') => {
+    setLoading(true);
+    setError('');
+
+    try {
+      await signInWithOAuth(provider);
+      setShowAuthMethods(false);
+      setAuthStep('method');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'failed to sign in');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const checkVerificationStatus = async () => {
     if (!address) return;
 
@@ -86,6 +194,8 @@ export default function VerifyPage() {
       setIsVerified(verified);
       if (verified) {
         setVerificationStatus('verified');
+        // Store verification status in localStorage
+        localStorage.setItem(`verified_${address}`, 'true');
       }
     } catch (err) {
       console.error('Error checking verification:', err);
@@ -191,6 +301,16 @@ export default function VerifyPage() {
           setIsVerified(true);
           setVerificationStatus('verified');
           clearInterval(interval);
+
+          // Store verification status in localStorage
+          if (address) {
+            localStorage.setItem(`verified_${address}`, 'true');
+          }
+
+          // Redirect to consumer page with third modal open after 2 seconds
+          setTimeout(() => {
+            router.push('/consumer?openModal=3');
+          }, 2000);
         } else {
           setBridgeStatus('bridging');
           console.log(
@@ -217,15 +337,312 @@ export default function VerifyPage() {
       <div
         style={{
           padding: '40px',
-          textAlign: 'center',
+          maxWidth: '600px',
+          margin: '0 auto',
           fontFamily: 'monospace',
         }}
       >
-        <h1>verify human</h1>
-        <p>connect your wallet first</p>
-        <Link href="/" style={{ color: '#0052ff' }}>
-          ← back to home
-        </Link>
+        <h1>verify as human</h1>
+        <p style={{ marginBottom: '30px' }}>
+          sign in to verify your identity and unlock discounted pricing
+        </p>
+
+        {/* Error Message */}
+        {error && (
+          <div
+            style={{
+              background: '#ffebee',
+              padding: '15px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              color: '#c62828',
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        {/* Auth Flow */}
+        {!showAuthMethods ? (
+          <div style={{ textAlign: 'center' }}>
+            <button
+              onClick={() => setShowAuthMethods(true)}
+              disabled={loading}
+              style={{
+                padding: '16px 32px',
+                background: '#0052ff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold',
+              }}
+            >
+              sign in
+            </button>
+          </div>
+        ) : authStep === 'method' ? (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}
+          >
+            <button
+              onClick={() => setAuthStep('email')}
+              disabled={loading}
+              style={{
+                padding: '12px',
+                background: '#0052ff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              email
+            </button>
+            <button
+              onClick={() => setAuthStep('sms')}
+              disabled={loading}
+              style={{
+                padding: '12px',
+                background: '#0052ff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              mobile
+            </button>
+            <button
+              onClick={() => handleOAuthSignIn('google')}
+              disabled={loading}
+              style={{
+                padding: '12px',
+                background: '#0052ff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              google
+            </button>
+            <button
+              onClick={() => handleOAuthSignIn('x')}
+              disabled={loading}
+              style={{
+                padding: '12px',
+                background: '#0052ff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              X
+            </button>
+            <button
+              onClick={() => setShowAuthMethods(false)}
+              disabled={loading}
+              style={{
+                padding: '12px',
+                background: '#f5f5f5',
+                color: '#333',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              cancel
+            </button>
+          </div>
+        ) : authStep === 'email' ? (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}
+          >
+            <input
+              type="email"
+              placeholder="enter your email"
+              value={emailOrPhone}
+              onChange={(e) => setEmailOrPhone(e.target.value)}
+              style={{
+                padding: '12px',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+              }}
+            />
+            <button
+              onClick={handleEmailSignIn}
+              disabled={loading || !emailOrPhone}
+              style={{
+                padding: '12px',
+                background: '#0052ff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              {loading ? 'sending...' : 'send OTP'}
+            </button>
+            <button
+              onClick={() => {
+                setAuthStep('method');
+                setEmailOrPhone('');
+              }}
+              disabled={loading}
+              style={{
+                padding: '12px',
+                background: '#f5f5f5',
+                color: '#333',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              back
+            </button>
+          </div>
+        ) : authStep === 'sms' ? (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}
+          >
+            <input
+              type="tel"
+              placeholder="enter phone (+1234567890)"
+              value={emailOrPhone}
+              onChange={(e) => setEmailOrPhone(e.target.value)}
+              style={{
+                padding: '12px',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+              }}
+            />
+            <button
+              onClick={handleSmsSignIn}
+              disabled={loading || !emailOrPhone}
+              style={{
+                padding: '12px',
+                background: '#0052ff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              {loading ? 'sending...' : 'send OTP'}
+            </button>
+            <button
+              onClick={() => {
+                setAuthStep('method');
+                setEmailOrPhone('');
+              }}
+              disabled={loading}
+              style={{
+                padding: '12px',
+                background: '#f5f5f5',
+                color: '#333',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              back
+            </button>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}
+          >
+            <p
+              style={{
+                fontSize: '14px',
+                color: '#666',
+                marginBottom: '8px',
+              }}
+            >
+              enter the 6-digit code sent to {emailOrPhone}
+            </p>
+            <input
+              type="text"
+              placeholder="enter OTP code"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              maxLength={6}
+              style={{
+                padding: '12px',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+              }}
+            />
+            <button
+              onClick={handleVerifyOtp}
+              disabled={loading || !otp}
+              style={{
+                padding: '12px',
+                background: '#0052ff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              {loading ? 'verifying...' : 'verify OTP'}
+            </button>
+            <button
+              onClick={() => {
+                setAuthStep('method');
+                setEmailOrPhone('');
+                setOtp('');
+              }}
+              disabled={loading}
+              style={{
+                padding: '12px',
+                background: '#f5f5f5',
+                color: '#333',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              back
+            </button>
+          </div>
+        )}
+
+        <div style={{ marginTop: '30px', textAlign: 'center' }}>
+          <Link href="/" style={{ color: '#0052ff' }}>
+            ← back to home
+          </Link>
+        </div>
       </div>
     );
   }
@@ -239,7 +656,30 @@ export default function VerifyPage() {
         fontFamily: 'monospace',
       }}
     >
-      <h1>verify as human</h1>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px',
+        }}
+      >
+        <h1 style={{ margin: 0 }}>verify as human</h1>
+        <button
+          onClick={() => signOut()}
+          style={{
+            padding: '8px 16px',
+            background: '#f5f5f5',
+            color: '#333',
+            border: '1px solid #ddd',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+          }}
+        >
+          sign out
+        </button>
+      </div>
 
       {/* Wallet Info */}
       <div

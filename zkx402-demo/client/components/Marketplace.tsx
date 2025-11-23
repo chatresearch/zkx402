@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DataCard } from '@/components/DataCard';
 import { DataDetailDialog } from '@/components/DataDetailDialog';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,8 @@ const TrumpSecretaryImg = '/assets/leak-trump-secretary.png';
 
 interface MarketplaceProps {
   isWalletConnected: boolean;
+  initialOpenModalId?: string | null;
+  isUserVerified?: boolean;
 }
 
 const mockData = [
@@ -156,13 +158,23 @@ const typeIcons = {
   data: Database,
 };
 
-export const Marketplace = ({ isWalletConnected }: MarketplaceProps) => {
+export const Marketplace = ({ isWalletConnected, initialOpenModalId, isUserVerified = false }: MarketplaceProps) => {
   const [selectedData, setSelectedData] = useState<(typeof mockData)[0] | null>(
     null
   );
   const [filter, setFilter] = useState<'all' | 'documents' | 'images' | 'data'>(
     'all'
   );
+
+  // Auto-open modal if initialOpenModalId is provided
+  useEffect(() => {
+    if (initialOpenModalId) {
+      const dataItem = mockData.find(item => item.id === initialOpenModalId);
+      if (dataItem) {
+        setSelectedData(dataItem);
+      }
+    }
+  }, [initialOpenModalId]);
 
   const filteredData =
     filter === 'all'
@@ -231,6 +243,7 @@ export const Marketplace = ({ isWalletConnected }: MarketplaceProps) => {
           isOpen={!!selectedData}
           onClose={() => setSelectedData(null)}
           isWalletConnected={isWalletConnected}
+          isUserVerified={isUserVerified}
         />
       )}
     </section>

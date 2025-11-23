@@ -1,12 +1,19 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Shield, CheckCircle2, AlertCircle, Wallet, Info } from "lucide-react";
-import { toast } from "sonner";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Shield, CheckCircle2, AlertCircle, Wallet, Info } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface DataDetailDialogProps {
   data: {
@@ -23,21 +30,32 @@ interface DataDetailDialogProps {
   isOpen: boolean;
   onClose: () => void;
   isWalletConnected: boolean;
+  isUserVerified?: boolean;
 }
 
-export const DataDetailDialog = ({ data, isOpen, onClose, isWalletConnected }: DataDetailDialogProps) => {
+export const DataDetailDialog = ({
+  data,
+  isOpen,
+  onClose,
+  isWalletConnected,
+  isUserVerified = false,
+}: DataDetailDialogProps) => {
+  const router = useRouter();
   const [isVerified, setIsVerified] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
 
+  // Use global verification status if available
+  const verified = isUserVerified || isVerified;
+
   const handlePurchase = () => {
     if (!isWalletConnected) {
-      toast.error("Please connect your wallet first");
+      toast.error('Please connect your wallet first');
       return;
     }
-    
-    const price = isVerified ? data.verifiedPrice : data.price;
+
+    const price = verified ? data.verifiedPrice : data.price;
     toast.success(`Purchase initiated for $${price}`, {
-      description: "Confirm the transaction in your wallet",
+      description: 'Confirm the transaction in your wallet',
     });
   };
 
@@ -45,8 +63,8 @@ export const DataDetailDialog = ({ data, isOpen, onClose, isWalletConnected }: D
     // Simulate verification
     setTimeout(() => {
       setIsVerified(true);
-      toast.success("Identity verified successfully!", {
-        description: "You now qualify for preferential pricing",
+      toast.success('Identity verified successfully!', {
+        description: 'You now qualify for preferential pricing',
       });
       setShowVerification(false);
     }, 1500);
@@ -59,7 +77,10 @@ export const DataDetailDialog = ({ data, isOpen, onClose, isWalletConnected }: D
           <div className="flex items-start justify-between mb-2">
             <DialogTitle className="text-2xl pr-8">{data.title}</DialogTitle>
             {data.zkVerified && (
-              <Badge variant="outline" className="gap-1 border-verified text-verified shadow-glow-verified">
+              <Badge
+                variant="outline"
+                className="gap-1 border-verified text-verified shadow-glow-verified"
+              >
                 <Shield className="w-3 h-3" />
                 ZK Verified
               </Badge>
@@ -76,37 +97,44 @@ export const DataDetailDialog = ({ data, isOpen, onClose, isWalletConnected }: D
                 Pricing Tiers
               </h3>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-verified" />
                   <span className="font-medium">Verified Credentials</span>
                 </div>
-                <span className="text-lg font-bold text-verified">${data.verifiedPrice}</span>
+                <span className="text-lg font-bold text-verified">
+                  ${data.verifiedPrice}
+                </span>
               </div>
-              
+
               <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-muted-foreground" />
                   <span className="font-medium">Unverified</span>
                 </div>
-                <span className="text-lg font-bold text-muted-foreground">${data.price}</span>
+                <span className="text-lg font-bold text-muted-foreground">
+                  ${data.price}
+                </span>
               </div>
             </div>
 
-            {!isVerified && (
-              <Button 
-                variant="outline" 
-                size="sm" 
+            {!verified && (
+              <Button
+                variant="outline"
+                size="sm"
                 className="w-full mt-3"
-                onClick={() => setShowVerification(true)}
+                onClick={() => {
+                  onClose();
+                  router.push('/verify');
+                }}
               >
                 Verify Identity for 50% Discount
               </Button>
             )}
-            
-            {isVerified && (
+
+            {verified && (
               <div className="mt-3 p-2 bg-verified/10 border border-verified/20 rounded-lg text-sm text-verified flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
                 You qualify for verified pricing
@@ -121,7 +149,19 @@ export const DataDetailDialog = ({ data, isOpen, onClose, isWalletConnected }: D
           </Button>
           <Button onClick={handlePurchase} className="gap-2">
             <Wallet className="w-4 h-4" />
-            Purchase for ${isVerified ? data.verifiedPrice : data.price}
+            {verified ? (
+              <>
+                Purchase for{' '}
+                <span className="line-through text-muted-foreground ml-1">
+                  ${data.price}
+                </span>{' '}
+                <span className="text-verified font-bold ml-1">
+                  ${data.verifiedPrice}
+                </span>
+              </>
+            ) : (
+              <>Purchase for ${data.price}</>
+            )}
           </Button>
         </DialogFooter>
 
@@ -134,10 +174,14 @@ export const DataDetailDialog = ({ data, isOpen, onClose, isWalletConnected }: D
               </div>
               <h3 className="text-xl font-bold">Verify Your Identity</h3>
               <p className="text-muted-foreground">
-                Connect with Self.xyz to verify your credentials and unlock preferential pricing
+                Connect with Self.xyz to verify your credentials and unlock
+                preferential pricing
               </p>
               <div className="flex gap-3 justify-center pt-4">
-                <Button variant="outline" onClick={() => setShowVerification(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowVerification(false)}
+                >
                   Cancel
                 </Button>
                 <Button onClick={handleVerify} className="gap-2">

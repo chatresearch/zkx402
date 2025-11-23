@@ -610,14 +610,14 @@ export default function Home() {
             // Signed in - show main CTA
             <>
               <div className="cta-section">
-                <h2>call paid API</h2>
-                <p>get a motivational quote for 0.01 USDC</p>
+                <h2>access classified content</h2>
+                <p>unlock sensitive leak for 0.01 USDC</p>
                 <button
                   className="cta-button"
                   onClick={handleCallApi}
                   disabled={loading || parseFloat(balance) < 0.01}
                 >
-                  {loading ? 'processing...' : 'get motivational quote'}
+                  {loading ? 'processing...' : 'access sensitive content'}
                 </button>
                 {parseFloat(balance) < 0.01 && (
                   <p
@@ -640,8 +640,72 @@ export default function Home() {
 
               {quote && (
                 <div className="response-section">
-                  <h3>response:</h3>
-                  <div className="quote-display">"{quote}"</div>
+                  <div
+                    style={{
+                      textAlign: 'center',
+                      marginBottom: '24px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'inline-block',
+                        padding: '12px 32px',
+                        background: 'linear-gradient(135deg, #00ff00, #00cc00)',
+                        color: '#000',
+                        fontWeight: 'bold',
+                        fontSize: '20px',
+                        borderRadius: '8px',
+                        marginBottom: '16px',
+                        boxShadow: '0 0 20px rgba(0, 255, 0, 0.5)',
+                        letterSpacing: '2px',
+                      }}
+                    >
+                      🔓 ACCESS GRANTED
+                    </div>
+                    <div
+                      style={{
+                        color: '#00ff00',
+                        fontSize: '14px',
+                        fontFamily: 'monospace',
+                        marginTop: '8px',
+                      }}
+                    >
+                      CLASSIFIED CONTENT UNLOCKED • PAYMENT VERIFIED
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      marginBottom: '24px',
+                    }}
+                  >
+                    <img
+                      src="/assets/leak_cat.jpg"
+                      alt="Classified Leak"
+                      style={{
+                        maxWidth: '600px',
+                        width: '100%',
+                        borderRadius: '12px',
+                        border: '3px solid #00ff00',
+                        boxShadow: '0 0 30px rgba(0, 255, 0, 0.3)',
+                      }}
+                    />
+                  </div>
+
+                  <div
+                    style={{
+                      textAlign: 'center',
+                      color: '#00ff00',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      marginBottom: '16px',
+                      letterSpacing: '1px',
+                    }}
+                  >
+                    [ TOP SECRET - WHISTLEBLOWER PRESS CARD ]
+                  </div>
 
                   {paymentInfo && paymentInfo.transaction && (
                     <div style={{ marginTop: '16px', textAlign: 'center' }}>
@@ -687,7 +751,7 @@ export default function Home() {
               </h3>
               <ol>
                 <li>
-                  <strong>user clicks "Get Motivational Quote"</strong>
+                  <strong>user clicks "Access Sensitive Content"</strong>
                 </li>
 
                 <li>
@@ -738,7 +802,7 @@ Content-Type: application/json
   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
   "payTo": "0xYourReceiverAddress",
   "resource": "http://localhost:3001/motivate",
-  "description": "Get a motivational quote",
+  "description": "Access classified whistleblower content",
   "extra": {
     "gasLimit": "200000"`}
                       <span style={{ color: '#33FF33' }}>,</span>
@@ -977,7 +1041,7 @@ Content-Type: application/json
 X-PAYMENT-RESPONSE: base64_encoded_json
 
 {
-  "quote": "Work hard, have fun, make history.",
+  "quote": "ACCESS GRANTED - Classified content unlocked",
   "timestamp": "2025-11-11T21:45:00.000Z",
   "paid": true
 }
@@ -994,10 +1058,13 @@ Decoded X-PAYMENT-RESPONSE:
                 </li>
 
                 <li>
-                  <strong>user sees the quote and payment confirmation</strong>
+                  <strong>
+                    user sees classified content and payment confirmation
+                  </strong>
                   <p style={{ fontSize: '13px', marginTop: '8px' }}>
-                    click the transaction hash to view it on Basescan and see
-                    the onchain payment
+                    the sensitive whistleblower image is revealed with access
+                    granted status. click the transaction hash to view it on
+                    Basescan and see the onchain payment
                   </p>
                 </li>
               </ol>
