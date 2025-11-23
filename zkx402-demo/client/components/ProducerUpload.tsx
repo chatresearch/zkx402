@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useCurrentUser } from '@coinbase/cdp-hooks';
 import {
   Upload,
   Lock,
@@ -81,7 +82,60 @@ function isMockProof(proof: Presentation): proof is MockProofResponse {
   return 'proof' in proof && 'publicInputs' in proof;
 }
 
+// Helper function to store proof in localStorage
+function storeProofInLocalStorage(
+  proofData: Presentation,
+  walletAddress: string
+) {
+  try {
+    // Extract source type from proof metadata
+    let sourceType = 'unknown';
+    if ('exportMetadata' in proofData && proofData.exportMetadata) {
+      const metadata = proofData.exportMetadata as any;
+      if (metadata.sourceType) {
+        sourceType = metadata.sourceType.toUpperCase();
+      }
+    } else if ('publicInputs' in proofData && proofData.publicInputs?.url) {
+      // Try to extract from URL
+      const url = proofData.publicInputs.url;
+      if (url.includes('github')) sourceType = 'GITHUB';
+      else if (url.includes('notion')) sourceType = 'NOTION';
+    }
+
+    // Create new proof (replaces any existing proof)
+    const storageKey = `proofs_${walletAddress}`;
+    const newProof = {
+      id: `proof_${Date.now()}`,
+      type: sourceType,
+      proofData: proofData,
+      createdAt:
+        'exportedAt' in proofData
+          ? proofData.exportedAt
+          : new Date().toISOString(),
+    };
+
+    // Store only this proof (replaces previous)
+    const proofStorage = {
+      proofs: [newProof],
+    };
+
+    // Save to localStorage
+    localStorage.setItem(storageKey, JSON.stringify(proofStorage));
+
+    console.log(
+      '✅ Proof stored in localStorage (previous proof replaced):',
+      newProof.id,
+      `type: ${sourceType}`
+    );
+  } catch (error) {
+    console.error('Failed to store proof in localStorage:', error);
+  }
+}
+
 export const ProducerUpload = () => {
+  const { currentUser } = useCurrentUser();
+  const address = currentUser?.evmAccounts?.[0];
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [isEncrypted, setIsEncrypted] = useState(false);
@@ -445,6 +499,11 @@ export const ProducerUpload = () => {
 
       // Export proof data to file
       exportProofData(data);
+
+      // Store proof in localStorage if user has a wallet
+      if (address) {
+        storeProofInLocalStorage(data, address);
+      }
 
       toast({
         title: 'Origin Verified ✨',
