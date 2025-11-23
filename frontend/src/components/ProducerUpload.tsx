@@ -11,6 +11,7 @@ import {
   Zap,
   Shield,
   Terminal,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -184,6 +185,62 @@ export const ProducerUpload = () => {
 
   const addLog = (message: string) => {
     setProofLogs((prev) => [...prev, `> ${message}`]);
+  };
+
+  const exportProofData = (proofData: Presentation) => {
+    try {
+      // Create a comprehensive proof data object
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        proofType: isVlayerProof(proofData) ? 'vlayer' : 'mock',
+        ...proofData,
+        // Include metadata about the export
+        exportMetadata: {
+          fileName: selectedFile?.name || 'unknown',
+          sourceType: sourceType,
+          originUrl: sourceType === 'notion' ? notionPageUrl : originUrl,
+          // Note: auth header is intentionally excluded for security
+        },
+      };
+
+      // Convert to JSON string
+      const jsonString = JSON.stringify(exportData, null, 2);
+
+      // Create a blob and download
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      // Generate filename with timestamp
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, '-')
+        .slice(0, -5);
+      const fileName = `proof-${timestamp}.json`;
+      link.download = fileName;
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      addLog(`📥 Proof data exported to ${fileName}`);
+
+      toast({
+        title: 'Proof Exported 📥',
+        description: `Proof data saved to ${fileName}`,
+      });
+    } catch (error) {
+      console.error('Error exporting proof data:', error);
+      addLog('❌ Error exporting proof data');
+      toast({
+        title: 'Export Failed',
+        description: 'Failed to export proof data',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleGenerateProof = async () => {
@@ -365,6 +422,9 @@ export const ProducerUpload = () => {
           'Unrecognized proof format from server. Check console for details.'
         );
       }
+
+      // Export proof data to file
+      exportProofData(data);
 
       toast({
         title: 'Origin Verified ✨',
@@ -762,12 +822,23 @@ export const ProducerUpload = () => {
                 {/* Verified Data Display */}
                 {presentation && (
                   <Card className="bg-muted/50 border-primary/30 p-6">
-                    <h4 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-primary" />
-                      {isVlayerProof(presentation)
-                        ? 'vlayer Proof Data'
-                        : 'Verified Data Preview'}
-                    </h4>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-primary" />
+                        {isVlayerProof(presentation)
+                          ? 'vlayer Proof Data'
+                          : 'Verified Data Preview'}
+                      </h4>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => exportProofData(presentation)}
+                        className="gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        Export Proof
+                      </Button>
+                    </div>
                     <div className="bg-background rounded-lg p-4 max-h-96 overflow-y-auto">
                       <pre className="text-xs text-muted-foreground overflow-x-auto">
                         {(() => {
