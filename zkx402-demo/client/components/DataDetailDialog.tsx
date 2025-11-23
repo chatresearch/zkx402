@@ -55,8 +55,12 @@ export const DataDetailDialog = ({
 
     const price = verified ? data.verifiedPrice : data.price;
     toast.success(`Purchase initiated for $${price}`, {
-      description: 'Confirm the transaction in your wallet',
+      description: 'Redirecting to demo...',
     });
+    
+    // Redirect to demo endpoint with price parameter
+    onClose();
+    router.push(`/demo?price=${price}`);
   };
 
   const handleVerify = () => {

@@ -2,13 +2,12 @@
 
 import { Marketplace } from '@/components/Marketplace';
 import { Header } from '@/components/Header';
-import { useAccount } from 'wagmi';
 import { useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { useCurrentUser } from '@coinbase/cdp-hooks';
+import { useCurrentUser, useIsSignedIn } from '@coinbase/cdp-hooks';
 
 export default function ConsumerPage() {
-  const { isConnected } = useAccount();
+  const { isSignedIn } = useIsSignedIn();
   const { currentUser } = useCurrentUser();
   const searchParams = useSearchParams();
   const openModalId = searchParams.get('openModal');
@@ -28,7 +27,7 @@ export default function ConsumerPage() {
     <div className="min-h-screen bg-background">
       <Header />
       <Marketplace 
-        isWalletConnected={isConnected} 
+        isWalletConnected={isSignedIn} 
         initialOpenModalId={openModalId}
         isUserVerified={isVerified}
       />

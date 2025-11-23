@@ -1,36 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Shield, Wallet } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useCurrentUser, useIsSignedIn } from "@coinbase/cdp-hooks";
 
 export const Header = () => {
-  const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const handleWalletAction = () => {
-    if (isConnected) {
-      disconnect();
-    } else {
-      // Connect with the first available connector (injected wallet)
-      const connector = connectors[0];
-      if (connector) {
-        connect({ connector });
-      }
-    }
-  };
+  const { currentUser } = useCurrentUser();
+  const { isSignedIn } = useIsSignedIn();
+  const address = currentUser?.evmAccounts?.[0];
 
   const formatAddress = (addr: string) => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
+
   return (
     <header className="fixed top-0 w-full z-50 border-b border-border/40 backdrop-blur-lg bg-background/80">
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
@@ -73,16 +55,14 @@ export const Header = () => {
           </nav>
         </div>
         
-        <div className="flex items-center gap-4">
-          <Button 
-            variant={mounted && isConnected ? "secondary" : "default"} 
-            onClick={handleWalletAction} 
-            className="gap-2"
-          >
-            <Wallet className="w-4 h-4" />
-            {mounted && isConnected && address ? formatAddress(address) : "Connect Wallet"}
-          </Button>
-        </div>
+        {isSignedIn && address && (
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border">
+            <Wallet className="w-4 h-4 text-primary" />
+            <span className="text-sm font-mono text-foreground">
+              {formatAddress(address)}
+            </span>
+          </div>
+        )}
       </div>
     </header>
   );

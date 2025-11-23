@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   useCurrentUser,
   useIsSignedIn,
@@ -31,6 +31,7 @@ interface PaymentResponse {
 
 export default function Home() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentUser } = useCurrentUser();
   const { isSignedIn } = useIsSignedIn();
   const { signInWithEmail } = useSignInWithEmail();
@@ -59,6 +60,10 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
 
   const address = currentUser?.evmAccounts?.[0];
+  
+  // Get price from URL parameter, default to 0.01 if not provided
+  const priceParam = searchParams.get('price');
+  const purchasePrice = priceParam ? parseFloat(priceParam) : 0.01;
 
   // fetch balance when connected
   useEffect(() => {
@@ -513,6 +518,8 @@ export default function Home() {
                       padding: '12px',
                       borderRadius: '8px',
                       border: '1px solid #ddd',
+                      color: '#333',
+                      backgroundColor: '#fff',
                     }}
                   />
                   <button
@@ -550,6 +557,8 @@ export default function Home() {
                       padding: '12px',
                       borderRadius: '8px',
                       border: '1px solid #ddd',
+                      color: '#333',
+                      backgroundColor: '#fff',
                     }}
                   />
                   <button
@@ -597,6 +606,8 @@ export default function Home() {
                       padding: '12px',
                       borderRadius: '8px',
                       border: '1px solid #ddd',
+                      color: '#333',
+                      backgroundColor: '#fff',
                     }}
                   />
                   <button
@@ -625,15 +636,15 @@ export default function Home() {
             <>
               <div className="cta-section">
                 <h2>access classified content</h2>
-                <p>unlock sensitive leak for 0.01 USDC</p>
+                <p>unlock sensitive leak for {purchasePrice} USDC</p>
                 <button
                   className="cta-button"
                   onClick={handleCallApi}
-                  disabled={loading || parseFloat(balance) < 0.01}
+                  disabled={loading || parseFloat(balance) < purchasePrice}
                 >
                   {loading ? 'processing...' : 'access sensitive content'}
                 </button>
-                {parseFloat(balance) < 0.01 && (
+                {parseFloat(balance) < purchasePrice && (
                   <p
                     style={{
                       fontSize: '14px',
@@ -641,7 +652,7 @@ export default function Home() {
                       marginTop: '16px',
                     }}
                   >
-                    ⚠️ need at least 0.01 USDC - use faucet button above
+                    ⚠️ need at least {purchasePrice} USDC - use faucet button above
                   </p>
                 )}
               </div>

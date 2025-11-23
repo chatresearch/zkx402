@@ -483,6 +483,8 @@ export default function VerifyPage() {
                 padding: '12px',
                 borderRadius: '8px',
                 border: '1px solid #ddd',
+                color: '#333',
+                backgroundColor: '#fff',
               }}
             />
             <button
@@ -536,6 +538,8 @@ export default function VerifyPage() {
                 padding: '12px',
                 borderRadius: '8px',
                 border: '1px solid #ddd',
+                color: '#333',
+                backgroundColor: '#fff',
               }}
             />
             <button
@@ -599,6 +603,8 @@ export default function VerifyPage() {
                 padding: '12px',
                 borderRadius: '8px',
                 border: '1px solid #ddd',
+                color: '#333',
+                backgroundColor: '#fff',
               }}
             />
             <button
