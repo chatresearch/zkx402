@@ -1,5 +1,9 @@
 # ETHGlobal Buenos Aires 2025 zkx402 - x402 protocol extension
 
+## Archived project
+
+This project has been archived to preserve links from the hackathon. Live project work is over at [VHSpace](https://github.com/vhspace/zkx402).
+
 ## Summary
 zkx402 is a protocol extension that integrates Zero-Knowledge proofs into x402, enabling verified variable payments and verifiable content metadata.
 
